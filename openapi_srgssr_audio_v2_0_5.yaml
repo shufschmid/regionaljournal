@@ -1,0 +1,3621 @@
+openapi: 3.0.0
+info:
+  title: SRGSSR Audio
+  description: >
+    This API provides Audio Metadata (incl. subtitles) from RSI, RTS, RTS, SRF, SWI.
+  contact:
+    name: API Developer
+    url: https://developer.srgssr.ch
+    email: api@srgssr.ch
+  version: '2.0.5'
+servers:
+- url: https://api.srgssr.ch/audiometadata/v2
+  variables: {}
+- url: https://srgssr-prod.apigee.net/oauth/v1
+  variables: {}
+paths:
+  /audios/search:
+    get:
+      tags:
+      - Audios
+      summary: audiosSearch
+      description: Returns the audio search result matching the given search criteria. The service returns valid audioId(s) that can be used for other services/APIs requiring an audioId
+      operationId: audiosSearch
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: q
+        in: query
+        description: Term (string search on audio title) that should be searched for
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        description: The number of items that should be returned per page. Only supported on the request to the first page!
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: next
+        in: query
+        description: Encoded reference to the next page. Clients must not assemble this at their own but just use the next-link provided as part of the payload of every response.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type SearchResultListMedia.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SearchResultListMedia'
+                - xml:
+                    name: SearchResultListMedia
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SearchResultListMedia'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SearchResultListMedia'
+                - xml:
+                    name: SearchResultListMedia
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SearchResultListMedia'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /livestreams:
+    get:
+      tags:
+      - Livestreams
+      summary: livestreams
+      description: Returns a list of audio livestream medias with livestreamIds that can be used for getting livestream metadata by Id using audioBylivestreamId api service
+      operationId: livestreams
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: channelId
+        in: query
+        description: Use this field to get the livesteams of a radio channel. In order to get channelId value for a business unit, call the radioChannels API ( path- /radio/channels). In the radioChannels request , please provide business unit in the query parameter.
+        example: 69e8ac16-4327-4af4-b873-fd5cd6e895a7
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type MediaList
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /livestreams/{livestreamId}:
+    get:
+      tags:
+      - Livestreams
+      summary: audioBylivestreamId
+      description: Returns audio livestream metatdata for a valid audio livestreamId. To get a valid livestreamId, please use livestreams api service
+      operationId: audioBylivestreamId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: livestreamId
+        in: path
+        description: The ID of an audio Livestream. Please use livestreams api service to get a valid livestreamId
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type MediaList.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radio/channels:
+    get:
+      tags:
+      - RadioChannels
+      summary: radioChannels
+      description: Returns a list of Radio channels along with channelIds. The service returns valid channelId(s) that can be used for other services/APIs requiring a channelId
+      operationId: radioChannels
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type ChannelList.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ChannelList'
+                - xml:
+                    name: ChannelList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ChannelList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ChannelList'
+                - xml:
+                    name: ChannelList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ChannelList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radio/channels/{channelId}:
+    get:
+      tags:
+      - RadioChannels
+      summary: radioChannelBychannelId
+      description: Returns the currently playing and upcoming episode by channelId. To get a valid channelId, please use radioChannels api service
+      operationId: radioChannelBychannelId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: channelId
+        in: path
+        description: The ID of a channel. To get valid channelIds, please use radioChannels api service
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: livestreamId
+        in: query
+        description: The ID of an audio livestream. To get valid livestreamIds, please use livestreams api service
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type Channel.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Channel'
+                - xml:
+                    name: Channel
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Channel'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Channel'
+                - xml:
+                    name: Channel
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Channel'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radioshows/search:
+    get:
+      tags:
+      - RadioShows
+      summary: radioShowsSearch
+      description: Returns the radio show search result matching the given search criteria. showId(s) returned by this service can be used by other services/APIs requiring a valid showId
+      operationId: radioShowsSearch
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: q
+        in: query
+        description: Term (string search on show title) that should be searched for.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        description: The number of items that should be returned per page. Only supported on the request to the first page!
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: next
+        in: query
+        description: Encoded reference to the next page. Clients must not assemble this at their own but just use the next-link provided as part of the payload of every response.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type SearchResultListShow.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SearchResultListShow'
+                - xml:
+                    name: SearchResultListShow
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SearchResultListShow'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SearchResultListShow'
+                - xml:
+                    name: SearchResultListShow
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SearchResultListShow'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radioshows/{showId}:
+    get:
+      tags:
+      - RadioShows
+      summary: radioShowsByshowId
+      description: Returns radio show metatdata for a valid showId. Please use radioShowsSearch api service to get a valid showId
+      operationId: radioShowsByshowId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: showId
+        in: path
+        description: The ID of a radio show. Please use radioShowsSearch api service to get a valid showId
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type Show.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Show'
+                - xml:
+                    name: Show
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Show'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Show'
+                - xml:
+                    name: Show
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Show'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radioshows/byChannel:
+    get:
+      tags:
+      - RadioShows
+      summary: radioShowsBychannelId
+      description: Returns Radio shows according to an editorially managed list. Please use radioChannels api service to get a valid channelId
+      operationId: radioShowsBychannelId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: channelId
+        in: query
+        description: The ID of a channel. To get a valid channelId, please use radioChannels api service
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: characterFilter
+        in: query
+        description: 'One character (a-z) to be searched as Show Title starts with character (or) use # for everything else to filter.'
+        required: true
+        style: form
+        explode: true
+        schema:
+          pattern: '[a-z#]{1}'
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        description: The number of items that should be returned per page. Only supported on the request to the first page!
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: next
+        in: query
+        description: Encoded reference to the next page. Clients must not assemble this at their own but just use the next-link provided as part of the payload of every response.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type ShowList.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ShowList'
+                - xml:
+                    name: ShowList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ShowList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ShowList'
+                - xml:
+                    name: ShowList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ShowList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /episodes/byChannel:
+    get:
+      tags:
+      - Episodes
+      summary: episodesBychannelId
+      description: Returns the full-length audios for a selected date and a selected channel filtered by an editorially managed list of shows. To get a valid channelId, please use radioChannels api service
+      operationId: episodesBychannelId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: date
+        in: query
+        description: A ISO-8601 date format (YYYY-MM-DD) for example 2017-01-01.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+          format: date
+      - name: channelId
+        in: query
+        description: The ID of a channel. To get valid channelIds, please use radioChannels api service
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: timerange
+        in: query
+        description: Timerange within the day in the format hh:mm-hh:mm)
+        style: form
+        explode: true
+        schema:
+          pattern: '[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}'
+          type: string
+          example: 12:00-12:30
+      - name: pageSize
+        in: query
+        description: The number of items that should be returned per page. Only supported on the request to the first page!
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: next
+        in: query
+        description: Encoded reference to the next page. Clients must not assemble this at their own but just use the next-link provided as part of the payload of every response.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type MediaList.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaList'
+                - xml:
+                    name: MediaList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /episodeComposition/shows/{showId}:
+    get:
+      tags:
+      - EpisodeComposition
+      summary: episodeCompositionByshowId
+      description: Returns the latest episodes with a list of media for the given show. Only episodes with playable media are returned. Please use radioShowsSearch api service to get a valid showId
+      operationId: episodeCompositionByshowId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: showId
+        in: path
+        description: The ID of a radio show. Please use radioShowsSearch api service to get a valid showId
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: maxPublishedDate
+        in: query
+        description: Content is included from now to past until maxPublishedDate by year and month. Format is yyyy-mm; for example 2018-01
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: pageSize
+        in: query
+        description: The number of items that should be returned per page. Only supported on the request to the first page!
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: next
+        in: query
+        description: Encoded reference to the next page. Clients must not assemble this at their own but just use the next-link provided as part of the payload of every response.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Latest episodes with a list of media for the given show.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/EpisodeComposition'
+                - xml:
+                    name: EpisodeComposition
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/EpisodeComposition'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/EpisodeComposition'
+                - xml:
+                    name: EpisodeComposition
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/EpisodeComposition'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /mediaComposition/audios/{audioId}:
+    get:
+      tags:
+      - MediaComposition
+      summary: mediaCompostionByaudioId
+      description: Returns detailed metatdata for an audio. On the chapter section, there are information to play the audio. Please use audiosSearch api service to get valid Ids
+      operationId: mediaCompostionByaudioId
+      parameters:
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: audioId
+        in: path
+        description: The ID of an audio asset. Please use audiosSearch api service to get valid audioIds
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type MediaComposition.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaComposition'
+                - xml:
+                    name: MediaComposition
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaComposition'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MediaComposition'
+                - xml:
+                    name: MediaComposition
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MediaComposition'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+  /radio/songlist:
+    get:
+      tags:
+      - SongList
+      summary: radioSongList
+      description: Returns a list of songs played on the choosen Radio channelId and businessUnit
+      operationId: radioSongList
+      parameters:
+      - name: channelId
+        in: query
+        description: Channel Id
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: bu
+        in: query
+        description: Business unit
+        required: true
+        style: form
+        explode: true
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/bu'
+          - description: Business unit
+      - name: accept
+        in: header
+        description: ''
+        style: simple
+        schema:
+          allOf:
+          - $ref: '#/components/schemas/accept'
+          - {}
+      - name: callback
+        in: query
+        description: If this parameter is set, the result will be returned as [JSONP](https://en.wikipedia.org/wiki/JSONP). The given value will be used as the name of the method to be called.
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object of type SongList
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SongList'
+                - xml:
+                    name: SongList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SongList'
+        '203':
+          description: The returned object is the same as in a 200 response, but some non-mandatory values may be missing.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/SongList'
+                - xml:
+                    name: SongList
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/SongList'
+        '400':
+          description: Object of type BadRequest.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/BadRequest'
+                - xml:
+                    name: BadRequest
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: Object of type TokenError
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/TokenError'
+                - xml:
+                    name: TokenError
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+        '403':
+          description: Object of type QuotaViolation.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/QuotaViolation'
+                - xml:
+                    name: QuotaViolation
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/QuotaViolation'
+        '404':
+          description: Object of type UnknownResource.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/UnknownResource'
+                - xml:
+                    name: UnknownResource
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/UnknownResource'
+        '405':
+          description: Object of type MethodNotAllowed.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MethodNotAllowed'
+                - xml:
+                    name: MethodNotAllowed
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/MethodNotAllowed'
+        default:
+          description: Unexpected error.
+          headers: {}
+          content:
+            application/xml:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Status'
+                - xml:
+                    name: Status
+                    attribute: false
+                    wrapped: false
+            application/json; charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/Status'
+      deprecated: false
+      security:
+      - srg_auth: []
+components:
+  schemas:
+    MediaComposition:
+      title: MediaComposition
+      required:
+      - chapterUrn
+      - chapterList
+      type: object
+      properties:
+        chapterUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        segmentUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        episode:
+          allOf:
+          - $ref: '#/components/schemas/Episode'
+          - {}
+        show:
+          allOf:
+          - $ref: '#/components/schemas/Show'
+          - {}
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/Channel'
+          - {}
+        chapterList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chapter'
+          description: ''
+        analyticsData:
+          allOf:
+          - $ref: '#/components/schemas/AnalyticsData'
+          - {}
+    Episode:
+      title: Episode
+      required:
+      - id
+      - title
+      - imageUrl
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        publishedDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        fullLengthUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        socialCount:
+          allOf:
+          - $ref: '#/components/schemas/SocialCountEntry'
+          - {}
+    SocialCountEntry:
+      title: SocialCountEntry
+      required:
+      - key
+      - value
+      type: object
+      properties:
+        key:
+          allOf:
+          - $ref: '#/components/schemas/Key'
+          - {}
+        value:
+          type: integer
+          format: int32
+    Show:
+      title: Show
+      required:
+      - id
+      - title
+      - imageUrl
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        homepageUrl:
+          type: string
+        podcastSubscriptionUrl:
+          type: string
+        primaryChannelId:
+          type: string
+        viewedMedias:
+          type: integer
+          format: int32
+    Channel:
+      title: Channel
+      required:
+      - id
+      - title
+      - imageUrl
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        transmission:
+          allOf:
+          - $ref: '#/components/schemas/Transmission'
+          - {}
+        timeTableUrl:
+          type: string
+        now:
+          allOf:
+          - $ref: '#/components/schemas/Program'
+          - {}
+        next:
+          allOf:
+          - $ref: '#/components/schemas/Program'
+          - {}
+    Program:
+      title: Program
+      required:
+      - title
+      - startTime
+      - endTime
+      type: object
+      properties:
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        url:
+          type: string
+        show:
+          allOf:
+          - $ref: '#/components/schemas/Show'
+          - {}
+        presenter:
+          allOf:
+          - $ref: '#/components/schemas/Presenter'
+          - {}
+    Presenter:
+      title: Presenter
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+    Chapter:
+      title: Chapter
+      required:
+      - id
+      - mediaType
+      - vendor
+      - urn
+      - title
+      - imageUrl
+      - displayable
+      - type
+      - date
+      - duration
+      - position
+      - noEmbed
+      - markIn
+      - markOut
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        mediaType:
+          allOf:
+          - $ref: '#/components/schemas/MediaType'
+          - {}
+        vendor:
+          allOf:
+          - $ref: '#/components/schemas/Vendor'
+          - {}
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        blockReason:
+          allOf:
+          - $ref: '#/components/schemas/BlockReason'
+          - {}
+        displayable:
+          type: boolean
+        type:
+          allOf:
+          - $ref: '#/components/schemas/Type'
+          - {}
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int32
+        podcastSdUrl:
+          type: string
+        podcastHdUrl:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        assignedBy:
+          allOf:
+          - $ref: '#/components/schemas/AssignedBy'
+          - {}
+        relatedContentList:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedContent'
+          description: ''
+        socialCountList:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialCountEntry'
+          description: ''
+        fullLengthUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        position:
+          type: integer
+          format: int32
+        noEmbed:
+          type: boolean
+        markIn:
+          type: integer
+          format: int32
+        markOut:
+          type: integer
+          format: int32
+        subtitleList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subtitle'
+          description: ''
+        preTrailerStart:
+          type: string
+          format: date-time
+        postTrailerStop:
+          type: string
+          format: date-time
+        cesimId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        hbbtvProperties:
+          type: array
+          items:
+            $ref: '#/components/schemas/HbbtvProperties'
+          description: ''
+        analyticsData:
+          allOf:
+          - $ref: '#/components/schemas/AnalyticsData'
+          - {}
+        eventData:
+          type: string
+        resourceList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+          description: ''
+        segmentList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Segment'
+          description: ''
+    RelatedContent:
+      title: RelatedContent
+      required:
+      - id
+      - title
+      - url
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+    Subtitle:
+      title: Subtitle
+      required:
+      - url
+      - format
+      type: object
+      properties:
+        language:
+          type: string
+        locale:
+          type: string
+        url:
+          type: string
+        format:
+          allOf:
+          - $ref: '#/components/schemas/Format'
+          - {}
+    HbbtvProperties:
+      title: HbbtvProperties
+      type: object
+      properties:
+        redButton:
+          type: boolean
+        imageLink:
+          type: string
+    AnalyticsData:
+      title: AnalyticsData
+      type: object
+      properties:
+        srgPrId:
+          type: string
+        nsStEp:
+          type: string
+        srgPlid:
+          type: string
+        nsStPl:
+          type: string
+        nsStPr:
+          type: string
+        nsStTy:
+          type: string
+        nsStCi:
+          type: string
+        nsStEl:
+          type: string
+        nsStCl:
+          type: string
+        nsStSl:
+          type: string
+        nsStDt:
+          type: string
+        srgMgeobl:
+          type: string
+        nsStLi:
+          type: string
+        nsStTp:
+          type: string
+        nsStCn:
+          type: string
+        nsStPn:
+          type: string
+        srgUnit:
+          type: string
+        srgC1:
+          type: string
+        srgC2:
+          type: string
+        srgC3:
+          type: string
+        srgWo:
+          type: string
+        srgMqual:
+          type: string
+        srgEnc:
+          type: string
+        srgTvId:
+          type: string
+        srgTvsvizzera:
+          type: string
+        srgAodPrid:
+          type: string
+        srgFullLength:
+          type: string
+    Resource:
+      title: Resource
+      required:
+      - url
+      - quality
+      - protocol
+      - encoding
+      type: object
+      properties:
+        url:
+          type: string
+        quality:
+          allOf:
+          - $ref: '#/components/schemas/Quality'
+          - {}
+        protocol:
+          allOf:
+          - $ref: '#/components/schemas/Protocol'
+          - {}
+        encoding:
+          allOf:
+          - $ref: '#/components/schemas/Encoding'
+          - {}
+        mimeType:
+          type: string
+        analyticsData:
+          allOf:
+          - $ref: '#/components/schemas/AnalyticsData'
+          - {}
+    Segment:
+      title: Segment
+      required:
+      - id
+      - mediaType
+      - vendor
+      - urn
+      - title
+      - imageUrl
+      - displayable
+      - type
+      - date
+      - duration
+      - position
+      - noEmbed
+      - markIn
+      - markOut
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        mediaType:
+          allOf:
+          - $ref: '#/components/schemas/MediaType'
+          - {}
+        vendor:
+          allOf:
+          - $ref: '#/components/schemas/Vendor'
+          - {}
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        blockReason:
+          allOf:
+          - $ref: '#/components/schemas/BlockReason'
+          - {}
+        displayable:
+          type: boolean
+        type:
+          allOf:
+          - $ref: '#/components/schemas/Type'
+          - {}
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int32
+        podcastSdUrl:
+          type: string
+        podcastHdUrl:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        assignedBy:
+          allOf:
+          - $ref: '#/components/schemas/AssignedBy'
+          - {}
+        relatedContentList:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedContent'
+          description: ''
+        socialCountList:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialCountEntry'
+          description: ''
+        fullLengthUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        position:
+          type: integer
+          format: int32
+        noEmbed:
+          type: boolean
+        markIn:
+          type: integer
+          format: int32
+        markOut:
+          type: integer
+          format: int32
+        subtitleList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subtitle'
+          description: ''
+        preTrailerStart:
+          type: string
+          format: date-time
+        postTrailerStop:
+          type: string
+          format: date-time
+        cesimId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        hbbtvProperties:
+          type: array
+          items:
+            $ref: '#/components/schemas/HbbtvProperties'
+          description: ''
+        analyticsData:
+          allOf:
+          - $ref: '#/components/schemas/AnalyticsData'
+          - {}
+        eventData:
+          type: string
+    TopicList:
+      title: TopicList
+      type: object
+      properties:
+        TopicList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topic'
+          description: ''
+    Topic:
+      title: Topic
+      required:
+      - id
+      - title
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        viewedMedias:
+          type: integer
+          format: int32
+    Song:
+      title: Song
+      type: object
+      properties:
+        isPlayingNow:
+          type: boolean
+        title:
+          type: string
+        duration:
+          type: integer
+          format: int32
+        date:
+          type: string
+    ChannelList:
+      title: ChannelList
+      type: object
+      properties:
+        ChannelList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Channel'
+          description: ''
+    SongList:
+      title: SongList
+      type: object
+      properties:
+        Song:
+          type: array
+          items:
+            $ref: '#/components/schemas/Song'
+          description: ''
+    MediaList:
+      title: MediaList
+      type: object
+      properties:
+        next:
+          type: string
+        MediaList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+          description: ''
+    Media:
+      title: Media
+      required:
+      - id
+      - mediaType
+      - vendor
+      - urn
+      - title
+      - imageUrl
+      - displayable
+      - type
+      - date
+      - duration
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        mediaType:
+          allOf:
+          - $ref: '#/components/schemas/MediaType'
+          - {}
+        vendor:
+          allOf:
+          - $ref: '#/components/schemas/Vendor'
+          - {}
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        blockReason:
+          allOf:
+          - $ref: '#/components/schemas/BlockReason'
+          - {}
+        displayable:
+          type: boolean
+        type:
+          allOf:
+          - $ref: '#/components/schemas/Type'
+          - {}
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int32
+        podcastSdUrl:
+          type: string
+        podcastHdUrl:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        assignedBy:
+          allOf:
+          - $ref: '#/components/schemas/AssignedBy'
+          - {}
+        relatedContentList:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelatedContent'
+          description: ''
+        socialCountList:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialCountEntry'
+          description: ''
+        episode:
+          allOf:
+          - $ref: '#/components/schemas/Episode'
+          - {}
+        show:
+          allOf:
+          - $ref: '#/components/schemas/Show'
+          - {}
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/Channel'
+          - {}
+    ShowList:
+      title: ShowList
+      type: object
+      properties:
+        next:
+          type: string
+        ShowList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Show'
+          description: ''
+    SearchResultListMedia:
+      title: SearchResultListMedia
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int32
+        searchTerm:
+          type: string
+        next:
+          type: string
+        SearchResultListMedia:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResultMedia'
+          description: ''
+    SearchResultMedia:
+      title: SearchResultMedia
+      required:
+      - id
+      - urn
+      - title
+      - imageUrl
+      - mediaType
+      - duration
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        mediaType:
+          allOf:
+          - $ref: '#/components/schemas/MediaType'
+          - {}
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          format: int32
+        episode:
+          allOf:
+          - $ref: '#/components/schemas/Episode_1'
+          - {}
+        show:
+          allOf:
+          - $ref: '#/components/schemas/Show_1'
+          - {}
+        channelId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+    Episode_1:
+      title: Episode_1
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+    Show_1:
+      title: Show_1
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+    SearchResultListShow:
+      title: SearchResultListShow
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int32
+        searchTerm:
+          type: string
+        next:
+          type: string
+        SearchResultListShow:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResultShow'
+          description: ''
+    SearchResultShow:
+      title: SearchResultShow
+      required:
+      - id
+      - urn
+      - title
+      - imageUrl
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+    ModuleConfigList:
+      title: ModuleConfigList
+      type: object
+      properties:
+        moduleConfigList:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleConfig'
+          description: ''
+    ModuleConfig:
+      title: ModuleConfig
+      required:
+      - id
+      - title
+      - publishStartTimestamp
+      - publishEndTimestamp
+      - moduleConfigType
+      - seoName
+      - bgImageUrl
+      - bgImageExtId
+      - headerBackgroundColor
+      - headerTitleColor
+      - bgColor
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        publishStartTimestamp:
+          type: string
+          format: date-time
+        publishEndTimestamp:
+          type: string
+          format: date-time
+        moduleConfigType:
+          enum:
+          - EVENT
+          type: string
+        seoName:
+          pattern: '[a-z0-9-]+'
+          type: string
+        bgImageUrl:
+          type: string
+        bgImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        headerBackgroundColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        headerTitleColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        bgColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        textColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        linkColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        logoImageUrl:
+          type: string
+        logoImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        keyVisualImageUrl:
+          type: string
+        keyVisualImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        microSiteTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        microSiteUrl:
+          type: string
+        sectionList:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleSectionConfig'
+          description: ''
+    ModuleSectionConfig:
+      title: ModuleSectionConfig
+      required:
+      - id
+      - title
+      - publishStartTimestamp
+      - publishEndTimestamp
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        publishStartTimestamp:
+          type: string
+          format: date-time
+        publishEndTimestamp:
+          type: string
+          format: date-time
+    EventConfigList:
+      title: EventConfigList
+      type: object
+      properties:
+        EventConfigList:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventConfig'
+          description: ''
+    EventConfig:
+      title: EventConfig
+      required:
+      - id
+      - title
+      - seoName
+      - publishStartTimestamp
+      - publishEndTimestamp
+      - bgImageUrl
+      - bgImageExtId
+      - headerBackgroundColor
+      - headerTitleColor
+      - bgColor
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        seoName:
+          pattern: '[a-z0-9-]+'
+          type: string
+        publishStartTimestamp:
+          type: string
+          format: date-time
+        publishEndTimestamp:
+          type: string
+          format: date-time
+        bgImageUrl:
+          type: string
+        bgImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        headerBackgroundColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        headerTitleColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        bgColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        textColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        linkColor:
+          pattern: ^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$
+          type: string
+        logoImageUrl:
+          type: string
+        logoImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        keyVisualImageUrl:
+          type: string
+        keyVisualImageExtId:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        microSiteTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        microSiteUrl:
+          type: string
+        sectionList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+          description: ''
+    Section:
+      title: Section
+      required:
+      - id
+      - title
+      - publishStartTimestamp
+      - publishEndTimestamp
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        publishStartTimestamp:
+          type: string
+          format: date-time
+        publishEndTimestamp:
+          type: string
+          format: date-time
+    EpisodeComposition:
+      title: EpisodeComposition
+      required:
+      - show
+      type: object
+      properties:
+        show:
+          allOf:
+          - $ref: '#/components/schemas/Show'
+          - {}
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/Channel'
+          - {}
+        next:
+          type: string
+        EpisodeComposition:
+          type: array
+          items:
+            $ref: '#/components/schemas/EpisodeWithMedias'
+          description: ''
+    EpisodeWithMedias:
+      title: EpisodeWithMedias
+      required:
+      - id
+      - title
+      - imageUrl
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        title:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        lead:
+          type: string
+        description:
+          type: string
+        publishedDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+        imageTitle:
+          maxLength: 2000
+          minLength: 1
+          pattern: (\S| )+
+          type: string
+        imageCopyright:
+          type: string
+        fullLengthUrn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        socialCount:
+          allOf:
+          - $ref: '#/components/schemas/SocialCountEntry'
+          - {}
+        mediaList:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+          description: ''
+    MediaStatistic:
+      title: MediaStatistic
+      required:
+      - id
+      - mediaType
+      - vendor
+      - urn
+      type: object
+      properties:
+        id:
+          pattern: (\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)
+          type: string
+        mediaType:
+          allOf:
+          - $ref: '#/components/schemas/MediaType'
+          - {}
+        vendor:
+          allOf:
+          - $ref: '#/components/schemas/Vendor'
+          - {}
+        urn:
+          pattern: '|urn:((srf:(ais|livestream))|(rtr|rts|rsi|swi))(:livestream)?:(video|audio|show):(\d+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|livestream_\S*|[0-9a-z\-]+)'
+          type: string
+        socialCountList:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialCountEntry'
+          description: ''
+    BadRequest:
+      title: BadRequest
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          example: 400
+        message:
+          type: string
+          example: One or more required query parameter(s) missing or invalid.
+        info:
+          type: string
+          example: Bad request. Please provide valid values for one or more of the required parameters.
+    TokenError:
+      title: TokenError
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+          example: Access token has expired. Please try with a valid token.
+        info:
+          type: string
+          example: https://developer.srgssr.ch
+    QuotaViolation:
+      title: QuotaViolation
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+          example: You have exceeded your quota policy limit. Please try later.
+        info:
+          type: string
+          example: https://developer.srgssr.ch
+    UnknownResource:
+      title: UnknownResource
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+          example: Requested URL Not Found.
+        info:
+          type: string
+          example: Please check the URL/URI.
+    MethodNotAllowed:
+      title: MethodNotAllowed
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+          example: Requested Method Not Allowed.
+        info:
+          type: string
+          example: Please try other http methods. Requested Method Not Allowed.
+    Status:
+      title: Status
+      type: object
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ErrorStatus'
+          - {}
+    ErrorStatus:
+      title: ErrorStatus
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+          example: Internal server error. Unexpected error during processing
+        info:
+          type: string
+          example: https://developer.srgssr.ch
+    accept:
+      title: accept
+      enum:
+      - application/json
+      - application/xml
+      type: string
+    AssignedBy:
+      title: AssignedBy
+      enum:
+      - EDITOR
+      - TRENDING
+      - RECOMMENDATION
+      type: string
+    BlockReason:
+      title: BlockReason
+      enum:
+      - GEOBLOCK
+      - LEGAL
+      - COMMERCIAL
+      - AGERATING_18
+      - AGERATING_12
+      - STARTDATE
+      - ENDDATE
+      - UNKNOWN
+      type: string
+    bu:
+      title: bu
+      enum:
+      - srf
+      - rsi
+      - rtr
+      - rts
+      - swi
+      type: string
+    Encoding:
+      title: Encoding
+      enum:
+      - H_264
+      - VP_6_F
+      - MPEG_2
+      - WMV_3
+      - AAC
+      - AAC_HE
+      - MP_3
+      - MP_2
+      - WMAV_2
+      type: string
+    Format:
+      title: Format
+      enum:
+      - TTML
+      - VTT
+      type: string
+    Key:
+      title: Key
+      enum:
+      - SRG_VIEW
+      - SRG_LIKE
+      - FB_SHARE
+      - GOOGLE_SHARE
+      - TWITTER_SHARE
+      - WHATS_APP_SHARE
+      type: string
+    MediaType:
+      title: MediaType
+      enum:
+      - AUDIO
+      - VIDEO
+      type: string
+    Protocol:
+      title: Protocol
+      enum:
+      - HLS
+      - HLS_DVR
+      - HDS
+      - HDS_DVR
+      - RTMP
+      - HTTP
+      - HTTPS
+      - HTTP_M_3_U
+      - HTTP_MP_3_STREAM
+      type: string
+    Quality:
+      title: Quality
+      enum:
+      - SD
+      - HD
+      - HQ
+      type: string
+    Transmission:
+      title: Transmission
+      enum:
+      - TV
+      - RADIO
+      - ONLINE
+      - UNKNOWN
+      type: string
+    Type:
+      title: Type
+      enum:
+      - EPISODE
+      - EXTRACT
+      - TRAILER
+      - CLIP
+      - LIVESTREAM
+      - SCHEDULED_LIVESTREAM
+      type: string
+    Vendor:
+      title: Vendor
+      enum:
+      - SRF
+      - RTR
+      - RTS
+      - RSI
+      - SWI
+      type: string
+  securitySchemes:
+    srg_auth:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://srgssr-prod.apigee.net/oauth/v1/accesstoken?grant_type=client_credentials
+          scopes: {}
+security: []
+tags:
+- name: Audios
+  description: Services related to Audios. The service returns valid audioIds that can be used for other services/APIs requiring an audioId
+- name: Livestreams
+  description: Services returning Audio Livestream objects. This service returns valid livesteamIds with other metadata information. When requested by livestreamId, it returns metadata for the given livestreamId
+- name: RadioChannels
+  description: Services returning Radio Channel objects. The service returns list of radio channelIds. When requested by channelId, it returns currently playing and upcoming episode
+- name: RadioShows
+  description: Services returning Radio Show objects with related information. When requested by showId, it returns show metadata for the given showId
+- name: Episodes
+  description: Services returning audio Episode objects. The service returns full-length audios for a selected date and a selected channel filtered by an editorially managed list of shows
+- name: EpisodeComposition
+  description: Services returning Radio Show EpisodeComposition objects. The service returns the latest episodes with a list of media for the given show. Only episodes with playable media are returned by this service
+- name: MediaComposition
+  description: Services returning Audio MediaComposition objects. The service returns detailed metatdata for an audio. On the chapter section, there are information to play the audio
+- name: SongList
+  description: ''
