@@ -1,6 +1,18 @@
-.venv/
-.cache/
+# Root tooling deps (each app has its own nested .gitignore for its deps + build artefacts)
+node_modules/
+
+# Environment — never commit any of these. .env at the root configures docker-compose.
 .env
-__pycache__/
-*.pyc
-.pytest_cache/
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# Database dumps
+*.dump
+*.sql.gz
