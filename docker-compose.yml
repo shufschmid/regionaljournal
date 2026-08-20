@@ -9,7 +9,7 @@
 #
 # State lives in exactly two named volumes below. Nothing else on the host is
 # written to — that is the "no persistent file storage outside Directus" rule.
-name: app
+name: regionaljournal
 
 services:
   postgres:

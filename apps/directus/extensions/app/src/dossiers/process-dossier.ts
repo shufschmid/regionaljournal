@@ -73,7 +73,11 @@ async function extractTopics(
       {
         system: TOPICS_SYSTEM_PROMPT,
         prompt: buildTopicsPrompt(segment.paragraphs, headlines),
-        maxTokens: 2048
+        // A real dossier's transcript can run 30+ paragraphs, and the model has to
+        // read the whole thing per headline before answering - 2048 truncated on a
+        // real segment (confirmed via a real dossier run), even though the JSON
+        // answer itself is short.
+        maxTokens: 8192
       },
       deps.sendToClaude
     )
