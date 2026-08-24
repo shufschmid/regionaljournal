@@ -14,20 +14,53 @@ import { EDITIONS_QUERY } from '@/graphql/editions'
 import { LIVE_FETCH_POLICY } from '@/lib/apollo'
 import { statusLabel } from '@/lib/status'
 
-// The concrete UI for "manually trigger dossier-process without waiting for the
-// scheduled Flow". Not a GraphQL mutation - processing is server-side logic
-// (PDF parsing, SRGSSR, Claude), so it goes through a route handler that proxies
-// to the dossier-process extension endpoint, per the security model.
+// The concrete UI for "manually trigger the mailbox check / dossier-process
+// without waiting for the scheduled Flows". Not a GraphQL mutation - both are
+// server-side logic (IMAP, PDF parsing, SRGSSR, Claude), so they go through
+// route handlers that proxy to the extension endpoints, per the security model.
 //
-// Only shows dossiers that aren't fully processed yet, and hides itself
-// entirely once there's nothing left to review.
+// The list only shows dossiers that aren't fully processed yet, but the header
+// (with "Postfach jetzt pruefen") always renders - that button's whole purpose
+// is finding dossiers when the list is empty.
 export function DossiersPanel() {
   const client = useApolloClient()
   const { data, loading, error, refetch } = useQuery<DossiersQueryResult>(DOSSIERS_QUERY, {
     fetchPolicy: LIVE_FETCH_POLICY
   })
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [checkingMailbox, setCheckingMailbox] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [checkResult, setCheckResult] = useState<string | null>(null)
+
+  async function handleCheckMailbox() {
+    setProblem(null)
+    setCheckResult(null)
+    setCheckingMailbox(true)
+    try {
+      const response = await fetch('/api/dossiers/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 5 })
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { errors?: { message?: string }[] } | null
+        throw new Error(payload?.errors?.[0]?.message ?? `Fehler ${response.status}`)
+      }
+
+      const payload = (await response.json()) as { data: { created: number } }
+      setCheckResult(
+        payload.data.created === 0
+          ? 'Keine neuen Dossiers im Postfach gefunden.'
+          : `${payload.data.created} neue${payload.data.created === 1 ? 's' : ''} Dossier${payload.data.created === 1 ? '' : 's'} gefunden.`
+      )
+      await refetch()
+    } catch (cause) {
+      setProblem(messageOf(cause, 'Das Postfach konnte nicht geprueft werden.'))
+    } finally {
+      setCheckingMailbox(false)
+    }
+  }
 
   async function handleProcess(id: string) {
     setProblem(null)
@@ -53,12 +86,22 @@ export function DossiersPanel() {
 
   const dossiers = data?.dossiers ?? []
 
-  if (!loading && dossiers.length === 0 && error === undefined) return null // nothing to review - keep the UI quiet
-
   return (
     <Stack spacing={1.5}>
-      <Typography variant="h2">Dossiers</Typography>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Typography variant="h2" sx={{ flexGrow: 1 }}>
+          Dossiers
+        </Typography>
+        <Button size="small" variant="outlined" disabled={checkingMailbox} onClick={handleCheckMailbox}>
+          {checkingMailbox ? 'Prüfe Postfach…' : 'Postfach jetzt prüfen'}
+        </Button>
+      </Stack>
 
+      {checkResult !== null && (
+        <Alert severity="info" onClose={() => setCheckResult(null)}>
+          {checkResult}
+        </Alert>
+      )}
       {problem !== null && (
         <Alert severity="error" onClose={() => setProblem(null)}>
           {problem}

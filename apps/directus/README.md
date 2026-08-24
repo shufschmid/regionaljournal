@@ -9,9 +9,9 @@ Working instructions for agents and developers: [CLAUDE.md](CLAUDE.md).
 ## First run
 
 ```bash
-npm run setup            # .env from .env.example, install, build bundle + migrations
+npm run setup            # .env from .env.example, install, build the extension bundle
 npm run db:start         # Postgres 16 in Docker
-npm run directus:init    # bootstrap + migrate + apply schema — fresh database only
+npm run directus:init    # bootstrap + apply the committed schema — fresh database only
 npm run dev              # Postgres + Directus
 ```
 
@@ -38,22 +38,23 @@ npm run schema:diff      # what a push would change
 npm run schema:load      # schema/ → a running Directus
 ```
 
-Changes that must happen without a human in the admin UI (bootstrap, backfills,
-repairs) are TypeScript migrations in `migrations/*.mts`:
+This is the only way the model changes: build it in the admin UI, dump it, commit
+`schema/`. Migrations (`migrations/*.mts`) never create or alter a collection, field
+or relation — they are a last resort for **row data**, e.g. a backfill after a new
+field was dumped:
 
 ```bash
 npm run database:migrate   # compiles *.mts → *.mjs, then runs directus database migrate:latest
 ```
 
-Each collection is owned by **either** `schema/` **or** a migration — never both.
-[CLAUDE.md](CLAUDE.md) explains which to pick.
+[CLAUDE.md](CLAUDE.md) has the full rule.
 
 ## Tests and checks
 
 ```bash
 npm test           # vitest, in extensions/app
-npm run typecheck  # migrations + bundle
-npm run build      # compile migrations and every extension bundle
+npm run typecheck  # extension bundle (+ migrations, if the project has any)
+npm run build      # compile every extension bundle (and any migrations)
 ```
 
 ## Deployment

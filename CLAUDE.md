@@ -75,18 +75,23 @@ them is wrong even if it works.
    [Trigger docs](https://directus.com/docs/guides/flows/triggers). No system cron,
    no `setInterval` in a hook, no scheduler container. The Flow calls a custom
    operation from the bundle; the Flow itself is committed via `schema:dump`.
+9. **The data model is synced, never migrated.** Collections, fields, relations,
+   roles, permissions and Flows are built in the Directus admin UI and committed with
+   `npm run schema:dump` (directus-sync → `apps/directus/schema/`). A migration must
+   never create or alter structure; `apps/directus/migrations/` is a last resort for
+   row data — see [apps/directus/CLAUDE.md](apps/directus/CLAUDE.md).
 
 ## Where does this feature go?
 
 | The change is…                             | Goes to                                                                             |
 | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| a new collection or field                  | Directus admin UI, then `npm run schema:dump` — [apps/directus](apps/directus/)     |
+| a new collection, field, relation or role  | Directus admin UI, then `npm run schema:dump` — [apps/directus](apps/directus/)     |
 | a calculation, validation or business rule | extension bundle (endpoint or hook)                                                 |
 | anything that calls Claude                 | extension bundle, via `shared/claude.ts`                                            |
 | something that must run nightly/hourly     | Flow with a Schedule trigger + a custom operation in the bundle                     |
 | a screen, a form, a list, a chart          | [apps/front](apps/front/) — MUI components, Apollo for data                         |
 | a new query the UI needs                   | `apps/front/src/graphql/*.ts`                                                       |
-| a one-off data repair or backfill          | `apps/directus/migrations/*.mts`                                                    |
+| a one-off data repair or backfill          | rows only: a one-shot Flow, else `apps/directus/migrations/*.mts` as a last resort  |
 | a new environment variable                 | `apps/directus/.env.example` **and** root `.env.example` **and** docker-compose.yml |
 
 A change that spans both apps starts in `apps/directus` — data model first, then the
@@ -170,6 +175,20 @@ PDF parsing, SRGSSR resolution and Claude topic extraction):
   "Ausserdem" headlines to a transcript timestamp and summary.
 - `process-dossier.ts` — orchestrates the three into `editions` rows, shared by
   `endpoints/dossier-process` and `operations/dossiers-process-pending`.
+- `mailbox.ts`/`select-messages.ts`/`ingest-mailbox.ts` — IMAP fetch, "what counts as
+  a new dossier message", and the upload-and-create-row orchestration, shared by
+  `endpoints/dossiers-ingest` (the "Postfach jetzt prüfen" button) and
+  `operations/dossiers-ingest-imap`. Dedup is against **this Directus instance's own
+  `dossiers.source_subject`**, not the mailbox's `\Seen` flag — `\Seen` lives on the
+  mailbox, shared across every environment that ever connects to it (a fresh server
+  deployment, a colleague's local setup), so it cannot tell "already in this
+  database" from "already looked at somewhere". A message is still marked `\Seen`
+  after a successful ingest, purely for mailbox hygiene, never relied on for
+  correctness. `mailbox.ts`'s fetcher keeps the IMAP mailbox locked
+  (`getMailboxLock`, not a bare `mailboxOpen`) and the connection open across the
+  whole ingest, not just the fetch — closing early was a real bug: a message's
+  `markSeen()` needs a live connection to call at upload/create time, which is well
+  after the fetch itself returned.
 
 `SRGSSR_CLIENT_ID`/`SRGSSR_CLIENT_SECRET` are read with `optionalEnv`, not
 `requireEnv`, on purpose: missing or wrong credentials must fail per-segment
@@ -178,8 +197,14 @@ PDF parsing, SRGSSR resolution and Claude topic extraction):
 
 Two Flow Schedule triggers are expected but must be created by hand in the admin UI
 (Settings → Flows → Create Flow → Trigger "Schedule (cron)"), then versioned with
-`npm run schema:dump`: one for `dossiers-ingest-imap` (mailbox polling), one for
-`dossiers-process-pending` (PDF processing).
+`npm run schema:dump`: one for `dossiers-ingest-imap` (mailbox polling, default limit
+5), one for `dossiers-process-pending` (PDF processing). Until that Flow exists (or
+for an ad-hoc catch-up — e.g. recovering a mailbox backlog onto a freshly deployed,
+empty database), the "Postfach jetzt prüfen" button in `DossiersPanel` calls
+`endpoints/dossiers-ingest` directly. That endpoint only creates `pending` dossiers;
+it never calls `process-dossier` itself — chaining several 15-35s processing calls
+into one HTTP request risks a reverse-proxy timeout on a real deployment, so
+processing stays the separate, already-existing per-dossier step.
 
 ## Deployment
 

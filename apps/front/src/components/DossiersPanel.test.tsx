@@ -49,14 +49,72 @@ describe('DossiersPanel', () => {
     expect(screen.getByText('Fehlgeschlagen')).toBeInTheDocument()
   })
 
-  it('renders nothing once loading finishes with no dossiers to review', async () => {
-    const { container } = render(
+  it('still shows the header and "Postfach jetzt pruefen" once loading finishes with no dossiers to review', async () => {
+    render(
       <MockedProvider mocks={mockDossiersQuery([])}>
         <DossiersPanel />
       </MockedProvider>
     )
 
-    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    expect(await screen.findByRole('button', { name: 'Postfach jetzt prüfen' })).toBeInTheDocument()
+    expect(screen.queryByText('Ausstehend')).not.toBeInTheDocument()
+  })
+
+  it('checks the mailbox via the route handler and reports how many dossiers were found', async () => {
+    const fetchSpy = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { created: 2 } }) })
+    global.fetch = fetchSpy as unknown as typeof fetch
+    const user = userEvent.setup()
+
+    render(
+      <MockedProvider mocks={mockDossiersQuery([], 2)}>
+        <DossiersPanel />
+      </MockedProvider>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Postfach jetzt prüfen' }))
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith('/api/dossiers/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 5 })
+      })
+    )
+    expect(await screen.findByText('2 neue Dossiers gefunden.')).toBeInTheDocument()
+  })
+
+  it('reports when the mailbox has nothing new', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { created: 0 } }) }) as unknown as typeof fetch
+    const user = userEvent.setup()
+
+    render(
+      <MockedProvider mocks={mockDossiersQuery([])}>
+        <DossiersPanel />
+      </MockedProvider>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Postfach jetzt prüfen' }))
+
+    expect(await screen.findByText('Keine neuen Dossiers im Postfach gefunden.')).toBeInTheDocument()
+  })
+
+  it('shows an error when checking the mailbox fails', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({ errors: [{ message: 'Postfach nicht erreichbar.' }] })
+    }) as unknown as typeof fetch
+    const user = userEvent.setup()
+
+    render(
+      <MockedProvider mocks={mockDossiersQuery([])}>
+        <DossiersPanel />
+      </MockedProvider>
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Postfach jetzt prüfen' }))
+
+    expect(await screen.findByText('Postfach nicht erreichbar.')).toBeInTheDocument()
   })
 
   it('triggers processing via the route handler when "Jetzt verarbeiten" is clicked', async () => {

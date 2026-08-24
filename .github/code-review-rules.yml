@@ -389,24 +389,28 @@ rules:
 
   # ── Data model and migrations ───────────────────────────────────────────
 
-  - id: migrations-register-collection
-    title: A migration that creates a table also registers the collection
+  - id: schema-sync-owns-the-data-model
+    title: The data model changes through schema sync, never a migration
     severity: error
     include: ['apps/directus/migrations/**']
     description: |
-      Creating the table alone is enough for REST and GraphQL, but the admin
-      UI only lists collections with a `directus_collections` row, and renders
-      a plain text input for every field with no `directus_fields` row. Skip
-      those inserts and you ship a collection your colleagues can neither see
-      nor edit.
+      `apps/directus/schema/` (directus-sync) is the single source of truth for
+      the data model — collections, fields, relations, roles, policies,
+      permissions, presets, dashboards and Flows. They are built in the Directus
+      admin UI and committed with `npm run schema:dump`. Migrations exist for row
+      data only, and are a last resort even there.
 
-      A violation is a migration that calls `schema.createTable` for an
-      application collection without also inserting the matching
-      `directus_collections` and `directus_fields` rows.
+      A violation is a migration that changes structure: `schema.createTable`,
+      `schema.dropTable`, an `alterTable` that adds, drops or retypes a column,
+      a new foreign key, or an insert into `directus_collections`,
+      `directus_fields` or `directus_relations`. Such a change belongs in the
+      admin UI plus a `schema:dump`; owning a collection in both places also
+      breaks a fresh boot, because `schema:load` then tries to create what the
+      migration already created.
 
-      Not a violation: altering an existing table, backfills and data repairs,
-      index changes, and tables deliberately hidden from Directus with a
-      comment saying so.
+      Not a violation: `INSERT`/`UPDATE`/`DELETE` on application rows
+      (backfills, repairs, recomputing a derived column), and an index or
+      constraint Directus does not manage with a comment saying why.
 
   - id: migrations-reversible-mts
     title: Migrations are `.mts` and export both up and down

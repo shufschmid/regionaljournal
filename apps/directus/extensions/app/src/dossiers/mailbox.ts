@@ -1,11 +1,14 @@
 import { ImapFlow, type MessageStructureObject } from 'imapflow'
 import { simpleParser } from 'mailparser'
 import type { Readable } from 'node:stream'
-import { envFlag, optionalEnv, requireEnv } from '../../shared/env'
+import { envFlag, optionalEnv, requireEnv } from '../shared/env'
 import { selectDossierMessages, type MessageSummary } from './select-messages'
 
-// Fetches unseen dossier-PDF emails from a mailbox via IMAP and turns each into
-// an in-memory attachment buffer, ready to be uploaded to Directus Files.
+// Fetches dossier-PDF emails from a mailbox via IMAP and turns each into an
+// in-memory attachment buffer, ready to be uploaded to Directus Files. Shared by
+// the scheduled dossiers-ingest-imap operation and the manual dossiers-ingest
+// endpoint - same reasoning as process-dossier.ts being reused by the manual
+// dossier-process endpoint and the scheduled dossiers-process-pending operation.
 //
 // NOT verifiable end-to-end in this build - there is no real mailbox or
 // credentials available yet (see HANDOFF.md / the plan this was built from).
@@ -15,11 +18,6 @@ import { selectDossierMessages, type MessageSummary } from './select-messages'
 // shared/claude.ts's MessageSender. Only the real ImapFlow wiring itself (the
 // default client factory below) needs a live smoke test once real IMAP_*
 // credentials exist.
-//
-// Marking a successfully-ingested message \Seen IS the dedupe mechanism - no
-// separate "already processed" tracking table is needed, matching "no
-// persistent file storage outside Directus" (the mailbox itself is the only
-// place this state lives, and it lived there already).
 
 export interface DossierMessage {
   messageId: string
@@ -39,7 +37,19 @@ export interface MailboxConfig {
   subjectFilter: string | null
 }
 
-export type MailboxFetcher = (config: MailboxConfig, limit: number) => Promise<DossierMessage[]>
+export interface MailboxFetchResult {
+  messages: DossierMessage[]
+  /** Closes the IMAP connection. Call once done with `messages` - each one's
+   * `markSeen()` needs the connection to still be open, so the fetcher cannot
+   * close it itself before returning. */
+  close: () => Promise<void>
+}
+
+export type MailboxFetcher = (
+  config: MailboxConfig,
+  limit: number,
+  knownSubjects: ReadonlySet<string>
+) => Promise<MailboxFetchResult>
 
 export function imapConfigFromEnv(): MailboxConfig {
   const subjectFilter = optionalEnv('IMAP_SUBJECT_FILTER', '')
@@ -58,8 +68,12 @@ export function imapConfigFromEnv(): MailboxConfig {
  * structurally by the real client, and trivially fakeable in tests. */
 export interface ImapClientLike {
   connect(): Promise<void>
-  mailboxOpen(path: string): Promise<unknown>
-  search(query: { seen: boolean }, options: { uid: boolean }): Promise<number[] | false>
+  /** Not mailboxOpen() - a bare SELECT is not enough to keep later commands
+   * (messageFlagsAdd in particular) working once real network latency and
+   * interleaved async work sit between them. getMailboxLock is imapflow's own
+   * recommended way to hold a mailbox selected for a whole unit of work. */
+  getMailboxLock(path: string): Promise<{ release: () => void }>
+  search(query: Record<string, never>, options: { uid: boolean }): Promise<number[] | false>
   fetch(
     range: number[],
     query: { envelope: boolean; bodyStructure: boolean },
@@ -68,7 +82,6 @@ export interface ImapClientLike {
     uid: number
     envelope?: { subject?: string }
     bodyStructure?: MessageStructureObject
-    flags?: Set<string>
   }>
   download(range: string, part: string | undefined, options: { uid: boolean }): Promise<{ content: Readable }>
   messageFlagsAdd(range: string, flags: string[], options: { uid: boolean }): Promise<boolean>
@@ -100,15 +113,24 @@ function hasPdfAttachment(node: MessageStructureObject | undefined): boolean {
 }
 
 export function createMailboxFetcher(clientFactory: ImapClientFactory = defaultClientFactory): MailboxFetcher {
-  return async (config, limit) => {
+  return async (config, limit, knownSubjects) => {
     const client = clientFactory(config)
+    const closeConnection = () => client.logout().catch(() => client.close())
 
     await client.connect()
-    try {
-      await client.mailboxOpen(config.mailbox)
 
-      const uids = await client.search({ seen: false }, { uid: true })
-      if (!uids || uids.length === 0) return []
+    let lock: { release: () => void } | undefined
+    try {
+      lock = await client.getMailboxLock(config.mailbox)
+      const close = async () => {
+        lock!.release()
+        await closeConnection()
+      }
+
+      // All messages, not just unseen - see select-messages.ts for why \Seen is
+      // not the dedup mechanism.
+      const uids = await client.search({}, { uid: true })
+      if (!uids || uids.length === 0) return { messages: [], close }
 
       const summaries: MessageSummary[] = []
       const subjectByUid = new Map<number, string>()
@@ -118,12 +140,11 @@ export function createMailboxFetcher(clientFactory: ImapClientFactory = defaultC
         summaries.push({
           uid: message.uid,
           subject,
-          hasPdfAttachment: hasPdfAttachment(message.bodyStructure),
-          seen: message.flags?.has('\\Seen') ?? false
+          hasPdfAttachment: hasPdfAttachment(message.bodyStructure)
         })
       }
 
-      const selected = selectDossierMessages(summaries, { limit, subjectFilter: config.subjectFilter })
+      const selected = selectDossierMessages(summaries, { limit, subjectFilter: config.subjectFilter, knownSubjects })
 
       const results: DossierMessage[] = []
       for (const summary of selected) {
@@ -145,11 +166,16 @@ export function createMailboxFetcher(clientFactory: ImapClientFactory = defaultC
         })
       }
 
-      return results
-    } finally {
-      await client.logout().catch(() => client.close())
+      return { messages: results, close }
+    } catch (error) {
+      // Only the setup/fetch phase cleans up on its own failure - the success
+      // path hands `close` to the caller instead, because each result's
+      // markSeen() still needs the lock and connection open.
+      lock?.release()
+      await closeConnection()
+      throw error
     }
   }
 }
 
-export const fetchUnseenDossierMessages: MailboxFetcher = createMailboxFetcher()
+export const fetchDossierMessages: MailboxFetcher = createMailboxFetcher()

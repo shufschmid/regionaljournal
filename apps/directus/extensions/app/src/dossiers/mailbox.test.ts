@@ -12,6 +12,8 @@ const CONFIG: MailboxConfig = {
   subjectFilter: null
 }
 
+const NONE = new Set<string>()
+
 const RAW_MESSAGE_WITH_PDF = [
   'From: SMD <smd@example.com>',
   'To: dossier@example.com',
@@ -48,7 +50,7 @@ const RAW_MESSAGE_WITHOUT_ATTACHMENT = [
 function fakeClient(overrides: Partial<ImapClientLike> = {}): ImapClientLike {
   return {
     connect: vi.fn().mockResolvedValue(undefined),
-    mailboxOpen: vi.fn().mockResolvedValue(undefined),
+    getMailboxLock: vi.fn().mockResolvedValue({ release: vi.fn() }),
     search: vi.fn().mockResolvedValue([1]),
     fetch: vi.fn().mockImplementation(async function* () {
       yield {
@@ -60,8 +62,7 @@ function fakeClient(overrides: Partial<ImapClientLike> = {}): ImapClientLike {
             { type: 'text/plain' },
             { type: 'application/pdf', disposition: 'attachment', dispositionParameters: { filename: 'Dossier.pdf' } }
           ]
-        },
-        flags: new Set<string>()
+        }
       }
     }),
     download: vi.fn().mockResolvedValue({ content: Readable.from([Buffer.from(RAW_MESSAGE_WITH_PDF)]) }),
@@ -76,40 +77,76 @@ describe('createMailboxFetcher', () => {
   it('downloads and parses the PDF attachment of a selected message', async () => {
     const client = fakeClient()
     const fetcher = createMailboxFetcher(() => client)
-    const messages = await fetcher(CONFIG, 5)
+    const { messages } = await fetcher(CONFIG, 5, NONE)
 
     expect(messages).toHaveLength(1)
     expect(messages[0]!.subject).toBe('Dossier vom 17.08.2026')
     expect(messages[0]!.attachmentFilename).toBe('Dossier.pdf')
     expect(messages[0]!.attachmentBuffer.toString()).toContain('%PDF-1.4')
     expect(client.connect).toHaveBeenCalled()
-    expect(client.mailboxOpen).toHaveBeenCalledWith('INBOX')
+    expect(client.getMailboxLock).toHaveBeenCalledWith('INBOX')
+    expect(client.search).toHaveBeenCalledWith({}, { uid: true })
   })
 
-  it('marks the message \\Seen only when markSeen is actually invoked', async () => {
+  it('does not log out on its own after a successful fetch - markSeen still needs the connection', async () => {
     const client = fakeClient()
     const fetcher = createMailboxFetcher(() => client)
-    const [message] = await fetcher(CONFIG, 5)
+    await fetcher(CONFIG, 5, NONE)
 
-    expect(client.messageFlagsAdd).not.toHaveBeenCalled()
-    await message!.markSeen()
-    expect(client.messageFlagsAdd).toHaveBeenCalledWith('1', ['\\Seen'], { uid: true })
+    expect(client.logout).not.toHaveBeenCalled()
   })
 
-  it('returns nothing, without downloading, when the search finds no unseen messages', async () => {
-    const client = fakeClient({ search: vi.fn().mockResolvedValue([]) })
+  it('marks the message \\Seen only when markSeen is actually invoked, and close() releases the lock and logs out', async () => {
+    const release = vi.fn()
+    const client = fakeClient({ getMailboxLock: vi.fn().mockResolvedValue({ release }) })
     const fetcher = createMailboxFetcher(() => client)
+    const { messages, close } = await fetcher(CONFIG, 5, NONE)
 
-    await expect(fetcher(CONFIG, 5)).resolves.toEqual([])
-    expect(client.download).not.toHaveBeenCalled()
+    expect(client.messageFlagsAdd).not.toHaveBeenCalled()
+    await messages[0]!.markSeen()
+    expect(client.messageFlagsAdd).toHaveBeenCalledWith('1', ['\\Seen'], { uid: true })
+
+    await close()
+    expect(release).toHaveBeenCalled()
     expect(client.logout).toHaveBeenCalled()
   })
 
-  it('always logs out, even when something in between throws', async () => {
-    const client = fakeClient({ mailboxOpen: vi.fn().mockRejectedValue(new Error('boom')) })
+  it('skips a subject already known to this Directus instance, regardless of its \\Seen state', async () => {
+    const client = fakeClient()
     const fetcher = createMailboxFetcher(() => client)
 
-    await expect(fetcher(CONFIG, 5)).rejects.toThrow('boom')
+    const { messages } = await fetcher(CONFIG, 5, new Set(['Dossier vom 17.08.2026']))
+    expect(messages).toEqual([])
+    expect(client.download).not.toHaveBeenCalled()
+  })
+
+  it('returns nothing, without downloading, when the search finds no messages', async () => {
+    const client = fakeClient({ search: vi.fn().mockResolvedValue([]) })
+    const fetcher = createMailboxFetcher(() => client)
+
+    const { messages } = await fetcher(CONFIG, 5, NONE)
+    expect(messages).toEqual([])
+    expect(client.download).not.toHaveBeenCalled()
+  })
+
+  it('logs out on its own when something in the fetch phase throws', async () => {
+    const client = fakeClient({ getMailboxLock: vi.fn().mockRejectedValue(new Error('boom')) })
+    const fetcher = createMailboxFetcher(() => client)
+
+    await expect(fetcher(CONFIG, 5, NONE)).rejects.toThrow('boom')
+    expect(client.logout).toHaveBeenCalled()
+  })
+
+  it('releases the lock and logs out when something after locking throws', async () => {
+    const release = vi.fn()
+    const client = fakeClient({
+      getMailboxLock: vi.fn().mockResolvedValue({ release }),
+      search: vi.fn().mockRejectedValue(new Error('search failed'))
+    })
+    const fetcher = createMailboxFetcher(() => client)
+
+    await expect(fetcher(CONFIG, 5, NONE)).rejects.toThrow('search failed')
+    expect(release).toHaveBeenCalled()
     expect(client.logout).toHaveBeenCalled()
   })
 
@@ -119,14 +156,16 @@ describe('createMailboxFetcher', () => {
     })
     const fetcher = createMailboxFetcher(() => client)
 
-    await expect(fetcher(CONFIG, 5)).resolves.toEqual([])
+    const { messages } = await fetcher(CONFIG, 5, NONE)
+    expect(messages).toEqual([])
   })
 
   it('respects the subject filter passed through to selectDossierMessages', async () => {
     const client = fakeClient()
     const fetcher = createMailboxFetcher(() => client)
 
-    await expect(fetcher({ ...CONFIG, subjectFilter: 'newsletter' }, 5)).resolves.toEqual([])
+    const { messages } = await fetcher({ ...CONFIG, subjectFilter: 'newsletter' }, 5, NONE)
+    expect(messages).toEqual([])
     expect(client.download).not.toHaveBeenCalled()
   })
 })

@@ -1,0 +1,28 @@
+{
+  "collection": "editions",
+  "meta": {
+    "accountability": "all",
+    "archive_app_filter": true,
+    "archive_field": "status",
+    "archive_value": "archived",
+    "collapse": "open",
+    "collection": "editions",
+    "color": null,
+    "display_template": "{{ headline }}",
+    "group": null,
+    "hidden": false,
+    "icon": "radio",
+    "item_duplication_fields": null,
+    "note": "Aus einem Dossier aufgelöste Sendungen (Morgen/Mittag/Abend) mit Audio, Transkript und Themen-Zusammenfassungen.",
+    "preview_url": null,
+    "singleton": false,
+    "sort": null,
+    "sort_field": null,
+    "translations": null,
+    "unarchive_value": "draft",
+    "versioning": false
+  },
+  "schema": {
+    "name": "editions"
+  }
+}

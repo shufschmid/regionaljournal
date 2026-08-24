@@ -26,6 +26,11 @@
         "source": "src/endpoints/dossier-process/index.ts"
       },
       {
+        "type": "endpoint",
+        "name": "dossiers-ingest",
+        "source": "src/endpoints/dossiers-ingest/index.ts"
+      },
+      {
         "type": "hook",
         "name": "editions-guard-publish",
         "source": "src/hooks/editions-guard-publish/index.ts"

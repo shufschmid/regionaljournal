@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "docker compose up -d && npm run directus:start",
     "test": "npm test --prefix extensions/app",
-    "typecheck": "tsc --noEmit -p migrations && npm run typecheck --prefix extensions/app",
-    "build:migrations": "tsc -p migrations",
+    "typecheck": "if ls migrations/*.mts >/dev/null 2>&1; then tsc --noEmit -p migrations; else echo 'No migrations to typecheck.'; fi && npm run typecheck --prefix extensions/app",
+    "build:migrations": "if ls migrations/*.mts >/dev/null 2>&1; then tsc -p migrations; else echo 'No migrations to compile.'; fi",
     "build:extensions": "for d in extensions/*; do [ -f \"$d/package.json\" ] || continue; [ -f \"$d/package-lock.json\" ] || { echo \"✖ $d has no package-lock.json — run 'npm install' in it once and commit the lockfile\"; exit 1; }; (cd \"$d\" && npm ci --no-audit --no-fund && npm run build); done",
     "build": "npm run build:migrations && npm run build:extensions",
     "database:migrate": "npm run build:migrations && npx directus database migrate:latest",

@@ -48,8 +48,8 @@ cp .env.example .env      # then put your ANTHROPIC_API_KEY in .env
 docker compose up --build
 ```
 
-First boot takes a few minutes: it builds both images, creates the database, runs the
-migrations, applies the versioned schema and creates the admin user.
+First boot takes a few minutes: it builds both images, creates the database, applies
+the versioned schema from `apps/directus/schema/` and creates the admin user.
 
 - **Frontend:** http://localhost:3000 — sign in with the admin below
 - **Directus admin:** http://localhost:8055 — `admin@wepublish.ch` / `admin123`
@@ -58,11 +58,11 @@ Stop with `docker compose down`; add `-v` to also delete the database.
 
 ### What you get
 
-Two collections, created by TypeScript migrations
-(`apps/directus/migrations/`): **`dossiers`** (one row per incoming PDF, `pending` →
-`processing` → `processed`/`failed`) and **`editions`** (one row per story a dossier
-resolves to — `draft`/`published`/`archived`). The domain logic lives in
-`apps/directus/extensions/app/src/dossiers/`:
+Two collections, living in `apps/directus/schema/` as schema-as-code (built in the
+admin UI, committed with `npm run schema:dump` — never a migration): **`dossiers`**
+(one row per incoming PDF, `pending` → `processing` → `processed`/`failed`) and
+**`editions`** (one row per story a dossier resolves to — `draft`/`published`/
+`archived`). The domain logic lives in `apps/directus/extensions/app/src/dossiers/`:
 
 - **`pdf-parser.ts`** — extracts headline, teaser and timestamped transcript
   paragraphs from a dossier PDF (`pdfjs-dist`)
@@ -78,12 +78,15 @@ resolves to — `draft`/`published`/`archived`). The domain logic lives in
   (`dossiers-process-pending`) that runs `process-dossier` on anything still
   `pending` — both are meant to sit behind a Flow Schedule trigger
 - the frontend (`apps/front`) is an internal, login-gated review tool: a
-  "Jetzt verarbeiten" button per unprocessed dossier, and an edition list with
-  inline audio playback, an expandable transcript and a publish/withdraw toggle
+  "Postfach jetzt prüfen" button that checks the mailbox on demand (e.g. to recover
+  a backlog onto a freshly deployed, still-empty database — dedup is against this
+  Directus instance's own `dossiers`, not the mailbox's `\Seen` flag, so it works
+  even if every message was already read elsewhere), a "Jetzt verarbeiten" button per
+  unprocessed dossier, and an edition list with inline audio playback, an expandable
+  transcript and a publish/withdraw toggle
 
 See [apps/directus/CLAUDE.md](apps/directus/CLAUDE.md) for how to add a Flow Schedule
-trigger for the two operations above (a one-time, admin-UI click-through step, not
-something a migration can do).
+trigger for the two operations above (a one-time, admin-UI click-through step).
 
 ---
 
@@ -95,7 +98,7 @@ Docker is what deploys; for day-to-day work run the apps directly for fast reloa
 npm install                        # root: pre-commit tooling only
 
 cd apps/directus
-npm run setup                      # .env from example, install, build bundle + migrations
+npm run setup                      # .env from example, install, build the extension bundle
 npm run db:start                   # Postgres in Docker
 npm run directus:init              # ONE TIME on a fresh database
 ```
@@ -127,13 +130,14 @@ npm run lint             # prettier --write across the tree
 cd apps/directus
 npm run schema:dump      # after ANY model change in the admin UI — then commit schema/
 npm run schema:diff      # what a push would change
-npm run build            # compile migrations + extension bundle
+npm run build            # compile every extension bundle (and any migrations)
 npm run db:reset         # DESTRUCTIVE: drops the dev database
 ```
 
 The single most important habit: **after changing the data model in the Directus admin
 UI, run `npm run schema:dump` and commit `apps/directus/schema/`.** Otherwise the
-change exists only on your machine.
+change exists only on your machine. The model always travels this way — never in a
+migration.
 
 ---
 

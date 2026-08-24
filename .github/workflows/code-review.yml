@@ -54,8 +54,10 @@ jobs:
             apps/directus/extensions/app, with endpoints/, hooks/, operations/
             and shared/ (claude.ts, env.ts, http.ts). Scheduled work is a
             Directus Flow with a cron trigger calling an operation. The data
-            model is version-controlled in apps/directus/schema (directus-sync)
-            and apps/directus/migrations/*.mts.
+            model is version-controlled in apps/directus/schema (directus-sync):
+            it is always built in the admin UI and committed with
+            `npm run schema:dump`. apps/directus/migrations/*.mts is a last-resort
+            escape hatch for row data and never changes structure.
 
             apps/front is Next 16 (App Router), React 19, MUI 9, Apollo Client 4,
             and is UI only. The browser holds no token: it gets two httpOnly
