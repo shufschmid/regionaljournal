@@ -1,89 +1,191 @@
-# regionaljournal
+# Regionaljournal-Pipeline — Directus · Next · MUI · Claude
 
-Turns a daily SMD "Dossier" PDF (auto-transcribed SRF Regionaljournal Basel
-Baselland segments) into either:
+Turns the daily SMD "Dossier" PDF (auto-transcribed SRF Regionaljournal Basel
+Baselland segments) into an editorial tool: each dossier is parsed into per-story
+editions, matched to its SRF audio via the SRGSSR Audio Metadata API, summarised by
+Claude, and reviewed/published from an internal, login-gated frontend. Built on
+[wepublish/exotemplate](https://github.com/wepublish/exotemplate) — everything runs
+in Docker on an ordinary server, no GPU, no model weights, no extra infrastructure.
 
-- **`dossier_links.py`** — a Markdown file where every `mm:ss` timestamp
-  becomes a clickable deep link into the SRF audio player, resolved via the
-  SRGSSR Audio Metadata API.
-- **`blog.py`** — a standalone HTML blog, grouped by broadcast edition
-  (Morgen/Mittag/Abend) instead of by story, with a native `<audio>` player
-  per edition, per-paragraph jump links, and short summaries (including
-  "Ausserdem"-mentioned secondary topics, matched to where they actually
-  start in the transcript - see `blog_writer.py` for the matching logic).
+| Path                             | App                                       | Stack                                | Port |
+| -------------------------------- | ----------------------------------------- | ------------------------------------ | ---- |
+| [apps/directus/](apps/directus/) | Backend: data + **all** server-side logic | Directus 11, TypeScript, Postgres 16 | 8055 |
+| [apps/front/](apps/front/)       | Frontend: UI                              | Next 16, React 19, MUI 9, Apollo 4   | 3000 |
 
-Each segment in the dossier is a separate story published by SRF as its own
-"episode" of the show (not one shared audio file per Morgen/Mittag/Abend
-broadcast) - its dossier headline is a verbatim copy of the SRGSSR API's own
-episode title, so resolution (`SrgssrClient.resolve_episode`) is a plain
-title + date match against `episodeComposition/shows/{showId}`, not a
-time-of-day guess.
+The two apps are built and deployed independently. This is a monorepo, **not** an npm
+workspace: each app has its own `package.json`, lockfile and build. The root carries
+the shared pre-commit tooling, CI and the compose file that runs the whole stack.
 
-## Setup
+> **The rules this template exists to enforce** — full version in [CLAUDE.md](CLAUDE.md):
+>
+> 1. Runs without a GPU. 2. Every LLM call goes to the **Claude API**. 3. Runs with
+>    Docker. 4. Self-contained: Postgres + Directus + frontend, nothing else. 5. No
+>    persistent file storage outside Directus. 6. TypeScript only. 7. All server-side
+>    code is a **Directus extension**. 8. All scheduled work is a **Directus Flow**
+>    with a cron trigger.
 
-```
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt
-copy .env.example .env
-```
+---
 
-Then edit `.env` and fill in `SRGSSR_CLIENT_ID` / `SRGSSR_CLIENT_SECRET` (from
-your developer.srgssr.ch API access).
+## 1 · What you need
 
-Verify auth works:
+| Tool               | Why                              | Install                                        |
+| ------------------ | -------------------------------- | ---------------------------------------------- |
+| **Docker**         | Runs the whole application       | https://www.docker.com/products/docker-desktop |
+| **Node.js 22**     | Local development without Docker | https://nodejs.org or `nvm install 22`         |
+| **Claude API key** | Every AI feature                 | https://console.anthropic.com                  |
 
-```
-.venv/Scripts/python.exe scripts/check_auth.py
-```
+SRGSSR credentials and IMAP mailbox settings are optional for local exploration —
+without them, dossier processing still runs and creates `editions`, just with each
+one's `resolution_error` set instead of an `audio_url`. See the SRGSSR/IMAP sections
+of `.env.example`.
 
-## Usage
+---
 
-```
-.venv/Scripts/python.exe dossier_links.py "Dossier (1).pdf"
-```
+## 2 · Run it
 
-Writes `Dossier (1) mit links.md` next to the input by default (`-o` to override).
-
-```
-.venv/Scripts/python.exe blog.py "Dossier (1).pdf" "Dossier (2).pdf" -o blog.html --evening-output blog_abend.html
-```
-
-Takes one or more dossier PDFs and writes one combined, edition-grouped blog
-(newest first). `--evening-output` additionally writes a second file
-containing only the Abend editions, with plain date+time instead of the
-edition chip - see `example_blog.html` / `example_blog_abend.html` for a
-generated example.
-
-## Tests
-
-```
-.venv/Scripts/python.exe -m pytest tests/ -v
+```bash
+cp .env.example .env      # then put your ANTHROPIC_API_KEY in .env
+docker compose up --build
 ```
 
-`test_pdf_parser.py` and `test_blog_writer.py` run fully offline against the
-real sample PDFs in this repo. `test_srgssr_client.py` mocks all HTTP calls.
-`scripts/check_auth.py` and the full `dossier_links.py`/`blog.py` runs are the
-only pieces that need live credentials - both have been run successfully
-against both sample PDFs.
+First boot takes a few minutes: it builds both images, creates the database, applies
+the versioned schema from `apps/directus/schema/` and creates the admin user.
 
-## Notes on the live API vs. its OpenAPI spec
+- **Frontend:** http://localhost:3000 — sign in with the admin below
+- **Directus admin:** http://localhost:8055 — `admin@wepublish.ch` / `admin123`
 
-Discovered while implementing, in case the API changes again:
+Stop with `docker compose down`; add `-v` to also delete the database.
 
-- Response field names are lowerCamelCase (`channelList`, `searchResultShowList`,
-  `episodeList`, `mediaList`) even though `openapi_srgssr_audio_v2_0_5.yaml`
-  documents PascalCase (`ChannelList`, `SearchResultListShow`, ...).
-- `/radio/channels` only lists the 6 national channels (Radio SRF 1, 2 Kultur, ...) -
-  regional shows like "Regionaljournal Basel Baselland" aren't channels, they're
-  shows within a channel. Use `/radioshows/search` + `/episodeComposition/shows/{id}`.
-- The `next` pagination link returned by `episodeComposition` points at an internal
-  `integrationlayer` host that our API product doesn't cover and returns an HTML
-  error page instead of JSON. `resolve_episode()` treats a failed `next` fetch as
-  "no more pages" rather than crashing; in practice one page (100 episodes, ≈1
-  month of this show's output) is enough for same-day dossiers anyway.
-- Your Apigee app must be subscribed to an API product that actually includes the
-  `audiometadata` proxy, or every call 401s with
-  `keymanagement.service.InvalidAPICallAsNoApiProductMatchFound` even though
-  token issuance itself succeeds.
-- Each episode's `podcastHdUrl` is a direct, publicly-fetchable MP3 - no need to
-  embed SRF's own `/play/embed` iframe player at all.
+### What you get
+
+Two collections, living in `apps/directus/schema/` as schema-as-code (built in the
+admin UI, committed with `npm run schema:dump` — never a migration): **`dossiers`**
+(one row per incoming PDF, `pending` → `processing` → `processed`/`failed`) and
+**`editions`** (one row per story a dossier resolves to — `draft`/`published`/
+`archived`). The domain logic lives in `apps/directus/extensions/app/src/dossiers/`:
+
+- **`pdf-parser.ts`** — extracts headline, teaser and timestamped transcript
+  paragraphs from a dossier PDF (`pdfjs-dist`)
+- **`srgssr-client.ts`** — resolves a story's headline + date to its SRF audio
+  episode via the SRGSSR Audio Metadata API
+- **`topics-prompt.ts`** — builds the Claude prompt that matches a dossier's
+  secondary ("Ausserdem") headlines to a transcript timestamp and summary
+- **`process-dossier.ts`** — orchestrates the three above into `editions` rows,
+  shared by the manual endpoint and the scheduled Flow operation; one bad segment
+  never aborts the whole dossier, it just leaves that edition's `resolution_error` set
+- an **IMAP operation** (`dossiers-ingest-imap`) that picks up new dossier PDFs from a
+  mailbox and uploads them to Directus Files, and a **process operation**
+  (`dossiers-process-pending`) that runs `process-dossier` on anything still
+  `pending` — both are meant to sit behind a Flow Schedule trigger
+- the frontend (`apps/front`) is an internal, login-gated review tool: a
+  "Postfach jetzt prüfen" button that checks the mailbox on demand (e.g. to recover
+  a backlog onto a freshly deployed, still-empty database — dedup is against this
+  Directus instance's own `dossiers`, not the mailbox's `\Seen` flag, so it works
+  even if every message was already read elsewhere), a "Jetzt verarbeiten" button per
+  unprocessed dossier, and an edition list with inline audio playback, an expandable
+  transcript and a publish/withdraw toggle
+
+See [apps/directus/CLAUDE.md](apps/directus/CLAUDE.md) for how to add a Flow Schedule
+trigger for the two operations above (a one-time, admin-UI click-through step).
+
+---
+
+## 3 · Local development
+
+Docker is what deploys; for day-to-day work run the apps directly for fast reloads.
+
+```bash
+npm install                        # root: pre-commit tooling only
+
+cd apps/directus
+npm run setup                      # .env from example, install, build the extension bundle
+npm run db:start                   # Postgres in Docker
+npm run directus:init              # ONE TIME on a fresh database
+```
+
+Then three terminals:
+
+```bash
+cd apps/directus/extensions/app && npm run dev   # 1. rebuild the extension on change
+cd apps/directus && npm run dev                  # 2. Directus
+cd apps/front && npm install && npm run dev      # 3. Next
+```
+
+Start the extension watcher **first** and wait for its first successful build —
+Directus will not start without a built bundle, and without the watcher your changes
+are never picked up.
+
+Put your `ANTHROPIC_API_KEY` in `apps/directus/.env`, and
+`cp .env.local.example .env.local` in `apps/front`.
+
+---
+
+## 4 · Everyday commands
+
+```bash
+npm test                 # both apps' tests (from the root)
+npm run typecheck        # both apps
+npm run lint             # prettier --write across the tree
+
+cd apps/directus
+npm run schema:dump      # after ANY model change in the admin UI — then commit schema/
+npm run schema:diff      # what a push would change
+npm run build            # compile every extension bundle (and any migrations)
+npm run db:reset         # DESTRUCTIVE: drops the dev database
+```
+
+The single most important habit: **after changing the data model in the Directus admin
+UI, run `npm run schema:dump` and commit `apps/directus/schema/`.** Otherwise the
+change exists only on your machine. The model always travels this way — never in a
+migration.
+
+---
+
+## 5 · Repository layout
+
+```
+.
+├── README.md               ← this file
+├── CLAUDE.md               ← the rules and recipes agents follow
+├── docker-compose.yml      ← the whole application, self-contained
+├── .env.example            ← configuration for the Docker stack
+├── .github/workflows/      ← verify (typecheck/test/build) + image publishing
+└── apps/
+    ├── directus/           ← backend  (extensions/app = all server-side logic)
+    └── front/              ← frontend (Next + MUI)
+```
+
+Deeper guidance: [CLAUDE.md](CLAUDE.md),
+[apps/directus/CLAUDE.md](apps/directus/CLAUDE.md),
+[apps/front/CLAUDE.md](apps/front/CLAUDE.md).
+
+---
+
+## 6 · Deployment
+
+Images are published to GHCR, named after the repository
+(`ghcr.io/<owner>/<repo>-backend`, `…-front`): a push to `main` rebuilds the app that
+changed, a `v*` tag builds both production images in lockstep.
+
+On a server, run the same `docker-compose.yml` with real values in `.env` — generate
+`KEY` and `SECRET` with `openssl rand -hex 32`, set `DB_PASSWORD` and
+`ADMIN_PASSWORD`, point `DIRECTUS_PUBLIC_URL` and `FRONT_PUBLIC_URL` at the real
+hostnames, and put a reverse proxy in front for TLS.
+
+State lives in two named volumes: `db_data` (Postgres) and `directus_uploads`
+(Directus Files). Back those up — nothing else on the host holds application state.
+
+---
+
+## 7 · Troubleshooting
+
+| Symptom                                          | Cause / fix                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `KEY variable is not set`                        | You skipped `cp .env.example .env`.                                                                       |
+| Port 3000 / 8055 / 5432 already in use           | Change `FRONT_PORT` / `DIRECTUS_PORT` in `.env`, or stop the other process.                               |
+| Directus starts but a custom route 404s          | The extension bundle was not built: `cd apps/directus && npm run build:extensions`.                       |
+| AI feature returns "konnte nicht erzeugt werden" | `ANTHROPIC_API_KEY` missing or invalid — it belongs in the **backend** environment.                       |
+| An edition has no audio, `resolution_error` is set | Expected without real `SRGSSR_CLIENT_ID`/`SRGSSR_CLIENT_SECRET` — the story still gets an edition, just no `audio_url`. |
+| Frontend keeps showing the login form            | Cookies blocked, or `DIRECTUS_URL` unreachable from the Next process (in Docker: `http://directus:8055`). |
+| A colleague's collection is missing locally      | `cd apps/directus && npm run schema:load`.                                                                |
+| `Cannot connect to the Docker daemon`            | Docker isn't running.                                                                                     |

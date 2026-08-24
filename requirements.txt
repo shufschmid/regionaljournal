@@ -1,5 +1,0 @@
-pymupdf
-requests
-python-dotenv
-tzdata
-pytest
