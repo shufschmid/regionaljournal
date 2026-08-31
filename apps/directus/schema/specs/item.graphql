@@ -11,6 +11,14 @@ type Query {
   directus_sync_id_map_by_id(id: ID!, version: String): directus_sync_id_map
   directus_sync_id_map_aggregated(groupBy: [String], filter: directus_sync_id_map_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [directus_sync_id_map_aggregated!]!
   directus_sync_id_map_by_version(version: String!, id: ID!): version_directus_sync_id_map
+  punkt6_editions(filter: punkt6_editions_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String): [punkt6_editions!]!
+  punkt6_editions_by_id(id: ID!, version: String): punkt6_editions
+  punkt6_editions_aggregated(groupBy: [String], filter: punkt6_editions_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [punkt6_editions_aggregated!]!
+  punkt6_editions_by_version(version: String!, id: ID!): version_punkt6_editions
+  punkt6_dossiers(filter: punkt6_dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String): [punkt6_dossiers!]!
+  punkt6_dossiers_by_id(id: ID!, version: String): punkt6_dossiers
+  punkt6_dossiers_aggregated(groupBy: [String], filter: punkt6_dossiers_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [punkt6_dossiers_aggregated!]!
+  punkt6_dossiers_by_version(version: String!, id: ID!): version_punkt6_dossiers
 }
 
 type Mutation {
@@ -20,6 +28,10 @@ type Mutation {
   create_editions_item(data: create_editions_input!): editions
   create_directus_sync_id_map_items(filter: directus_sync_id_map_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [create_directus_sync_id_map_input!]): [directus_sync_id_map!]!
   create_directus_sync_id_map_item(data: create_directus_sync_id_map_input!): directus_sync_id_map
+  create_punkt6_editions_items(filter: punkt6_editions_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [create_punkt6_editions_input!]): [punkt6_editions!]!
+  create_punkt6_editions_item(data: create_punkt6_editions_input!): punkt6_editions
+  create_punkt6_dossiers_items(filter: punkt6_dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [create_punkt6_dossiers_input!]): [punkt6_dossiers!]!
+  create_punkt6_dossiers_item(data: create_punkt6_dossiers_input!): punkt6_dossiers
   update_dossiers_items(filter: dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, ids: [ID]!, data: update_dossiers_input!): [dossiers!]!
   update_dossiers_batch(filter: dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [update_dossiers_input!]): [dossiers!]!
   update_dossiers_item(id: ID!, data: update_dossiers_input!): dossiers
@@ -29,12 +41,22 @@ type Mutation {
   update_directus_sync_id_map_items(filter: directus_sync_id_map_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, ids: [ID]!, data: update_directus_sync_id_map_input!): [directus_sync_id_map!]!
   update_directus_sync_id_map_batch(filter: directus_sync_id_map_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [update_directus_sync_id_map_input!]): [directus_sync_id_map!]!
   update_directus_sync_id_map_item(id: ID!, data: update_directus_sync_id_map_input!): directus_sync_id_map
+  update_punkt6_editions_items(filter: punkt6_editions_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, ids: [ID]!, data: update_punkt6_editions_input!): [punkt6_editions!]!
+  update_punkt6_editions_batch(filter: punkt6_editions_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [update_punkt6_editions_input!]): [punkt6_editions!]!
+  update_punkt6_editions_item(id: ID!, data: update_punkt6_editions_input!): punkt6_editions
+  update_punkt6_dossiers_items(filter: punkt6_dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, ids: [ID]!, data: update_punkt6_dossiers_input!): [punkt6_dossiers!]!
+  update_punkt6_dossiers_batch(filter: punkt6_dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String, data: [update_punkt6_dossiers_input!]): [punkt6_dossiers!]!
+  update_punkt6_dossiers_item(id: ID!, data: update_punkt6_dossiers_input!): punkt6_dossiers
   delete_dossiers_items(ids: [ID]!): delete_many
   delete_dossiers_item(id: ID!): delete_one
   delete_editions_items(ids: [ID]!): delete_many
   delete_editions_item(id: ID!): delete_one
   delete_directus_sync_id_map_items(ids: [ID]!): delete_many
   delete_directus_sync_id_map_item(id: ID!): delete_one
+  delete_punkt6_editions_items(ids: [ID]!): delete_many
+  delete_punkt6_editions_item(id: ID!): delete_one
+  delete_punkt6_dossiers_items(ids: [ID]!): delete_many
+  delete_punkt6_dossiers_item(id: ID!): delete_one
 }
 
 type Subscription {
@@ -64,6 +86,8 @@ type Subscription {
   dossiers_mutated(event: EventEnum): dossiers_mutated
   editions_mutated(event: EventEnum): editions_mutated
   directus_sync_id_map_mutated(event: EventEnum): directus_sync_id_map_mutated
+  punkt6_editions_mutated(event: EventEnum): punkt6_editions_mutated
+  punkt6_dossiers_mutated(event: EventEnum): punkt6_dossiers_mutated
 }
 
 """The `Boolean` scalar type represents `true` or `false`."""
@@ -925,6 +949,182 @@ type editions_mutated {
   data: editions
 }
 
+type punkt6_dossiers {
+  id: ID!
+  status: String
+  source_file(filter: directus_files_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String): directus_files
+  source_message_id: String
+  source_subject: String
+
+  """Vom letzten fehlgeschlagenen Verarbeitungslauf."""
+  error_message: String
+  processed_at: Date
+  processed_at_func: datetime_functions
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+}
+
+type punkt6_dossiers_aggregated {
+  group: JSON
+  countAll: Int
+  count: punkt6_dossiers_aggregated_count
+  countDistinct: punkt6_dossiers_aggregated_count
+}
+
+type punkt6_dossiers_aggregated_count {
+  id: Int
+  status: Int
+  source_file: Int
+  source_message_id: Int
+  source_subject: Int
+
+  """Vom letzten fehlgeschlagenen Verarbeitungslauf."""
+  error_message: Int
+  processed_at: Int
+  date_created: Int
+  date_updated: Int
+}
+
+type punkt6_dossiers_mutated {
+  key: ID!
+  event: EventEnum
+  data: punkt6_dossiers
+}
+
+type punkt6_editions {
+  id: ID!
+  status: String
+  dossier(filter: punkt6_dossiers_filter, sort: [String], limit: Int, offset: Int, page: Int, search: String): punkt6_dossiers
+  broadcast_date: Date!
+  broadcast_date_func: date_functions
+
+  """
+  Titel des Hauptbeitrags, aus telebasel.ch uebernommen. Leichte redaktionelle Korrektur vor Veroeffentlichung moeglich.
+  """
+  headline: String!
+
+  """Optionale, von Claude geschriebene Kurzfassung des Hauptbeitrags."""
+  lead: String
+
+  """
+  Transkript der GANZEN Sendung, mit Timecodes. Von der Verarbeitung geschrieben.
+  """
+  transcript: JSON
+  transcript_func: count_functions
+
+  """Aufgeloeste MP4-Datei der ganzen Sendung (telebasel.ch)."""
+  video_url: String
+
+  """Link auf die Original-Sendung auf telebasel.ch."""
+  episode_url: String
+
+  """
+  Gesetzt, wenn zum Sendedatum keine telebasel.ch-Episode gefunden wurde.
+  """
+  resolution_error: String
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Int
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Int
+
+  """
+  Weitere Beitraege der Sendung (Titel, Zusammenfassung, Zeitfenster). Von der Verarbeitung geschrieben.
+  """
+  extra_topics: JSON
+  extra_topics_func: count_functions
+}
+
+type punkt6_editions_aggregated {
+  group: JSON
+  countAll: Int
+  count: punkt6_editions_aggregated_count
+  countDistinct: punkt6_editions_aggregated_count
+  avg: punkt6_editions_aggregated_fields
+  sum: punkt6_editions_aggregated_fields
+  avgDistinct: punkt6_editions_aggregated_fields
+  sumDistinct: punkt6_editions_aggregated_fields
+  min: punkt6_editions_aggregated_fields
+  max: punkt6_editions_aggregated_fields
+}
+
+type punkt6_editions_aggregated_count {
+  id: Int
+  status: Int
+  dossier: Int
+  broadcast_date: Int
+
+  """
+  Titel des Hauptbeitrags, aus telebasel.ch uebernommen. Leichte redaktionelle Korrektur vor Veroeffentlichung moeglich.
+  """
+  headline: Int
+
+  """Optionale, von Claude geschriebene Kurzfassung des Hauptbeitrags."""
+  lead: Int
+
+  """
+  Transkript der GANZEN Sendung, mit Timecodes. Von der Verarbeitung geschrieben.
+  """
+  transcript: Int
+
+  """Aufgeloeste MP4-Datei der ganzen Sendung (telebasel.ch)."""
+  video_url: Int
+
+  """Link auf die Original-Sendung auf telebasel.ch."""
+  episode_url: Int
+
+  """
+  Gesetzt, wenn zum Sendedatum keine telebasel.ch-Episode gefunden wurde.
+  """
+  resolution_error: Int
+  date_created: Int
+  date_updated: Int
+
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Int
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Int
+
+  """
+  Weitere Beitraege der Sendung (Titel, Zusammenfassung, Zeitfenster). Von der Verarbeitung geschrieben.
+  """
+  extra_topics: Int
+}
+
+type punkt6_editions_aggregated_fields {
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Float
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Float
+}
+
+type punkt6_editions_mutated {
+  key: ID!
+  event: EventEnum
+  data: punkt6_editions
+}
+
 """"""
 type version_directus_sync_id_map {
   id: ID
@@ -983,6 +1183,70 @@ type version_editions {
   resolution_error: String
   date_created: Date
   date_updated: Date
+}
+
+""""""
+type version_punkt6_dossiers {
+  id: ID
+  status: String
+  source_file: JSON
+  source_message_id: String
+  source_subject: String
+
+  """Vom letzten fehlgeschlagenen Verarbeitungslauf."""
+  error_message: String
+  processed_at: Date
+  date_created: Date
+  date_updated: Date
+}
+
+""""""
+type version_punkt6_editions {
+  id: ID
+  status: String
+  dossier: JSON
+  broadcast_date: Date
+
+  """
+  Titel des Hauptbeitrags, aus telebasel.ch uebernommen. Leichte redaktionelle Korrektur vor Veroeffentlichung moeglich.
+  """
+  headline: String
+
+  """Optionale, von Claude geschriebene Kurzfassung des Hauptbeitrags."""
+  lead: String
+
+  """
+  Transkript der GANZEN Sendung, mit Timecodes. Von der Verarbeitung geschrieben.
+  """
+  transcript: JSON
+
+  """Aufgeloeste MP4-Datei der ganzen Sendung (telebasel.ch)."""
+  video_url: String
+
+  """Link auf die Original-Sendung auf telebasel.ch."""
+  episode_url: String
+
+  """
+  Gesetzt, wenn zum Sendedatum keine telebasel.ch-Episode gefunden wurde.
+  """
+  resolution_error: String
+  date_created: Date
+  date_updated: Date
+
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Int
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Int
+
+  """
+  Weitere Beitraege der Sendung (Titel, Zusammenfassung, Zeitfenster). Von der Verarbeitung geschrieben.
+  """
+  extra_topics: JSON
 }
 
 input big_int_filter_operators {
@@ -1178,6 +1442,68 @@ input create_editions_input {
   resolution_error: String
   date_created: Date
   date_updated: Date
+}
+
+input create_punkt6_dossiers_input {
+  id: ID
+  status: String
+  source_file: create_directus_files_input
+  source_message_id: String
+  source_subject: String
+
+  """Vom letzten fehlgeschlagenen Verarbeitungslauf."""
+  error_message: String
+  processed_at: Date
+  date_created: Date
+  date_updated: Date
+}
+
+input create_punkt6_editions_input {
+  id: ID
+  status: String
+  dossier: create_punkt6_dossiers_input
+  broadcast_date: Date!
+
+  """
+  Titel des Hauptbeitrags, aus telebasel.ch uebernommen. Leichte redaktionelle Korrektur vor Veroeffentlichung moeglich.
+  """
+  headline: String!
+
+  """Optionale, von Claude geschriebene Kurzfassung des Hauptbeitrags."""
+  lead: String
+
+  """
+  Transkript der GANZEN Sendung, mit Timecodes. Von der Verarbeitung geschrieben.
+  """
+  transcript: JSON
+
+  """Aufgeloeste MP4-Datei der ganzen Sendung (telebasel.ch)."""
+  video_url: String
+
+  """Link auf die Original-Sendung auf telebasel.ch."""
+  episode_url: String
+
+  """
+  Gesetzt, wenn zum Sendedatum keine telebasel.ch-Episode gefunden wurde.
+  """
+  resolution_error: String
+  date_created: Date
+  date_updated: Date
+
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Int
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Int
+
+  """
+  Weitere Beitraege der Sendung (Titel, Zusammenfassung, Zeitfenster). Von der Verarbeitung geschrieben.
+  """
+  extra_topics: JSON
 }
 
 input date_filter_operators {
@@ -1841,6 +2167,48 @@ input number_filter_operators {
   _nbetween: [GraphQLStringOrFloat]
 }
 
+input punkt6_dossiers_filter {
+  id: id_filter_operators
+  status: string_filter_operators
+  source_file: directus_files_filter
+  source_message_id: string_filter_operators
+  source_subject: string_filter_operators
+  error_message: string_filter_operators
+  processed_at: date_filter_operators
+  processed_at_func: datetime_function_filter_operators
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  _and: [punkt6_dossiers_filter]
+  _or: [punkt6_dossiers_filter]
+}
+
+input punkt6_editions_filter {
+  id: id_filter_operators
+  status: string_filter_operators
+  dossier: punkt6_dossiers_filter
+  broadcast_date: date_filter_operators
+  broadcast_date_func: date_function_filter_operators
+  headline: string_filter_operators
+  lead: string_filter_operators
+  transcript: string_filter_operators
+  transcript_func: count_function_filter_operators
+  video_url: string_filter_operators
+  episode_url: string_filter_operators
+  resolution_error: string_filter_operators
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  main_start_seconds: number_filter_operators
+  main_end_seconds: number_filter_operators
+  extra_topics: string_filter_operators
+  extra_topics_func: count_function_filter_operators
+  _and: [punkt6_editions_filter]
+  _or: [punkt6_editions_filter]
+}
+
 input string_filter_operators {
   _eq: String
   _neq: String
@@ -2030,4 +2398,66 @@ input update_editions_input {
   resolution_error: String
   date_created: Date
   date_updated: Date
+}
+
+input update_punkt6_dossiers_input {
+  id: ID
+  status: String
+  source_file: update_directus_files_input
+  source_message_id: String
+  source_subject: String
+
+  """Vom letzten fehlgeschlagenen Verarbeitungslauf."""
+  error_message: String
+  processed_at: Date
+  date_created: Date
+  date_updated: Date
+}
+
+input update_punkt6_editions_input {
+  id: ID
+  status: String
+  dossier: update_punkt6_dossiers_input
+  broadcast_date: Date
+
+  """
+  Titel des Hauptbeitrags, aus telebasel.ch uebernommen. Leichte redaktionelle Korrektur vor Veroeffentlichung moeglich.
+  """
+  headline: String
+
+  """Optionale, von Claude geschriebene Kurzfassung des Hauptbeitrags."""
+  lead: String
+
+  """
+  Transkript der GANZEN Sendung, mit Timecodes. Von der Verarbeitung geschrieben.
+  """
+  transcript: JSON
+
+  """Aufgeloeste MP4-Datei der ganzen Sendung (telebasel.ch)."""
+  video_url: String
+
+  """Link auf die Original-Sendung auf telebasel.ch."""
+  episode_url: String
+
+  """
+  Gesetzt, wenn zum Sendedatum keine telebasel.ch-Episode gefunden wurde.
+  """
+  resolution_error: String
+  date_created: Date
+  date_updated: Date
+
+  """
+  Beginn des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_start_seconds: Int
+
+  """
+  Ende des Hauptbeitrags innerhalb der ganzen Sendung, in Sekunden (von telebasel.ch).
+  """
+  main_end_seconds: Int
+
+  """
+  Weitere Beitraege der Sendung (Titel, Zusammenfassung, Zeitfenster). Von der Verarbeitung geschrieben.
+  """
+  extra_topics: JSON
 }

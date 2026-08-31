@@ -9,8 +9,8 @@ in Docker on an ordinary server, no GPU, no model weights, no extra infrastructu
 
 | Path                             | App                                       | Stack                                | Port |
 | -------------------------------- | ----------------------------------------- | ------------------------------------ | ---- |
-| [apps/directus/](apps/directus/) | Backend: data + **all** server-side logic | Directus 11, TypeScript, Postgres 16 | 8055 |
-| [apps/front/](apps/front/)       | Frontend: UI                              | Next 16, React 19, MUI 9, Apollo 4   | 3000 |
+| [apps/directus/](apps/directus/) | Backend: data + **all** server-side logic | Directus 11, TypeScript, Postgres 16 | 8155 |
+| [apps/front/](apps/front/)       | Frontend: UI                              | Next 16, React 19, MUI 9, Apollo 4   | 3100 |
 
 The two apps are built and deployed independently. This is a monorepo, **not** an npm
 workspace: each app has its own `package.json`, lockfile and build. The root carries
@@ -51,10 +51,14 @@ docker compose up --build
 First boot takes a few minutes: it builds both images, creates the database, applies
 the versioned schema from `apps/directus/schema/` and creates the admin user.
 
-- **Frontend:** http://localhost:3000 — sign in with the admin below
-- **Directus admin:** http://localhost:8055 — `admin@wepublish.ch` / `admin123`
+- **Frontend:** http://localhost:3100 — sign in with the admin below
+- **Directus admin:** http://localhost:8155 — `admin@wepublish.ch` / `admin123`
 
 Stop with `docker compose down`; add `-v` to also delete the database.
+
+The compose services are called `regionaljournal-postgres`, `regionaljournal-directus`
+and `regionaljournal-front` — not a bare `postgres`/`directus`/`front`. See
+[Deployment](#6--deployment) for why that matters on a real server.
 
 ### What you get
 
@@ -87,6 +91,15 @@ admin UI, committed with `npm run schema:dump` — never a migration): **`dossie
 
 See [apps/directus/CLAUDE.md](apps/directus/CLAUDE.md) for how to add a Flow Schedule
 trigger for the two operations above (a one-time, admin-UI click-through step).
+
+A second, parallel pipeline does the same for **Punkt6**, Tele Basel's daily TV news
+show: `punkt6_dossiers`/`punkt6_editions` collections, a `src/punkt6/` domain folder,
+and a second "Punkt6-Dossiers" section in the frontend. Same SMD dossier-PDF mailbox,
+a different subject filter (`PUNKT6_IMAP_SUBJECT_FILTER`) — but video, not audio: no
+SRGSSR-style API or credentials involved, `punkt6/telebasel-client.ts` resolves a
+broadcast date to its telebasel.ch episode (video URL + exact per-story segment
+boundaries) via two plain, unauthenticated page fetches. See
+[CLAUDE.md](CLAUDE.md#domain-punkt6-tele-basel) for the full shape.
 
 ---
 
@@ -148,6 +161,7 @@ migration.
 ├── README.md               ← this file
 ├── CLAUDE.md               ← the rules and recipes agents follow
 ├── docker-compose.yml      ← the whole application, self-contained
+├── docker-compose.override.yml  ← local-dev host ports only; a real deploy ignores this
 ├── .env.example            ← configuration for the Docker stack
 ├── .github/workflows/      ← verify (typecheck/test/build) + image publishing
 └── apps/
@@ -175,17 +189,37 @@ hostnames, and put a reverse proxy in front for TLS.
 State lives in two named volumes: `db_data` (Postgres) and `directus_uploads`
 (Directus Files). Back those up — nothing else on the host holds application state.
 
+### Service names must be unique across the deploy host
+
+Compose gives each service a network alias equal to its name, and a PaaS that hosts
+several stacks — Dokploy, Coolify, Caprover — puts every stack that owns a domain on
+one shared Docker network. Two stacks that both shipped a service named `directus`
+would publish the same alias there, so `http://directus:8055` resolves to both
+containers and Docker's DNS round-robins between them: half the requests reach the
+other application's Directus. That is why the services here are already
+`regionaljournal-postgres`/`-directus`/`-front`, not the generic names — never rename
+one back.
+
+On Dokploy specifically, a domain is bound to a service by name, so if you ever do
+rename a service, update the **Service Name** on each domain in the same change
+(`regionaljournal-front` → port 3000, `regionaljournal-directus` → port 8055) —
+otherwise Traefik has nothing to attach the hostname to. `docker-compose.yml` itself
+has no `ports:` for this reason: Dokploy routes by service name and internal port,
+not by a published host port. `docker-compose.override.yml` (local dev only, which
+Dokploy never reads) is what maps `DIRECTUS_PORT`/`FRONT_PORT` to localhost.
+
 ---
 
 ## 7 · Troubleshooting
 
-| Symptom                                          | Cause / fix                                                                                               |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `KEY variable is not set`                        | You skipped `cp .env.example .env`.                                                                       |
-| Port 3000 / 8055 / 5432 already in use           | Change `FRONT_PORT` / `DIRECTUS_PORT` in `.env`, or stop the other process.                               |
-| Directus starts but a custom route 404s          | The extension bundle was not built: `cd apps/directus && npm run build:extensions`.                       |
-| AI feature returns "konnte nicht erzeugt werden" | `ANTHROPIC_API_KEY` missing or invalid — it belongs in the **backend** environment.                       |
-| An edition has no audio, `resolution_error` is set | Expected without real `SRGSSR_CLIENT_ID`/`SRGSSR_CLIENT_SECRET` — the story still gets an edition, just no `audio_url`. |
-| Frontend keeps showing the login form            | Cookies blocked, or `DIRECTUS_URL` unreachable from the Next process (in Docker: `http://directus:8055`). |
-| A colleague's collection is missing locally      | `cd apps/directus && npm run schema:load`.                                                                |
-| `Cannot connect to the Docker daemon`            | Docker isn't running.                                                                                     |
+| Symptom                                                                                                                     | Cause / fix                                                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEY variable is not set`                                                                                                   | You skipped `cp .env.example .env`.                                                                                                                                                       |
+| Port 3100 / 8155 / 5432 already in use                                                                                      | Change `FRONT_PORT` / `DIRECTUS_PORT` in `.env`, or stop the other process.                                                                                                               |
+| Directus starts but a custom route 404s                                                                                     | The extension bundle was not built: `cd apps/directus && npm run build:extensions`.                                                                                                       |
+| AI feature returns "konnte nicht erzeugt werden"                                                                            | `ANTHROPIC_API_KEY` missing or invalid — it belongs in the **backend** environment.                                                                                                       |
+| An edition has no audio, `resolution_error` is set                                                                          | Expected without real `SRGSSR_CLIENT_ID`/`SRGSSR_CLIENT_SECRET` — the story still gets an edition, just no `audio_url`.                                                                   |
+| Frontend keeps showing the login form                                                                                       | Cookies blocked, or `DIRECTUS_URL` unreachable from the Next process (in Docker: `http://regionaljournal-directus:8055`).                                                                 |
+| After login, parallel requests come back a mix of `400 GRAPHQL_VALIDATION` ("Cannot query field …") and `403 INVALID_TOKEN` | Another stack on the deploy host shares a compose service name with this one, so `DIRECTUS_URL` round-robins between two different Directus instances — see [Deployment](#6--deployment). |
+| A colleague's collection is missing locally                                                                                 | `cd apps/directus && npm run schema:load`.                                                                                                                                                |
+| `Cannot connect to the Docker daemon`                                                                                       | Docker isn't running.                                                                                                                                                                     |

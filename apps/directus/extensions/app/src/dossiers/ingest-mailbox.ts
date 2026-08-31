@@ -14,9 +14,14 @@ import type { Dossier } from '../types/schema'
 // chaining several of those into one HTTP request risks a reverse-proxy timeout
 // on a real deployment - keeping them separate means the caller decides how many
 // processing calls to make and how to pace them.
+//
+// Generic over the target "dossier" row type (T): the Punkt6 pipeline reuses this
+// exact orchestration unchanged (punkt6/ingest-mailbox.ts), since a mailbox-sourced
+// "pending row to process later" is the same shape for both shows. Defaults to
+// Dossier so every existing caller/type reference here needs no change.
 
-export interface IngestMailboxDeps {
-  dossiers: ItemsServiceLike<Dossier>
+export interface IngestMailboxDeps<T = Dossier> {
+  dossiers: ItemsServiceLike<T>
   /** Uploads a PDF to Directus Files, returning its file id. */
   uploadFile: (buffer: Buffer, filename: string) => Promise<string>
   fetchMessages: MailboxFetcher
@@ -30,25 +35,44 @@ export interface IngestMailboxResult {
   dossierIds: string[]
 }
 
-export async function ingestDossiersFromMailbox(limit: number, deps: IngestMailboxDeps): Promise<IngestMailboxResult> {
-  const existing = (await deps.dossiers.readByQuery({ fields: ['source_subject'], limit: -1 })) as {
+export async function ingestDossiersFromMailbox<
+  T extends {
+    status: string
+    source_file: string
+    source_message_id: string | null
+    source_subject: string | null
+  }
+>(limit: number, deps: IngestMailboxDeps<T>): Promise<IngestMailboxResult> {
+  const existing = (await deps.dossiers.readByQuery({
+    fields: ['source_subject'],
+    limit: -1
+  })) as {
     source_subject: string | null
   }[]
-  const knownSubjects = new Set(existing.map((d) => d.source_subject).filter((s): s is string => s !== null))
+  const knownSubjects = new Set(
+    existing.map((d) => d.source_subject).filter((s): s is string => s !== null)
+  )
 
-  const { messages, close } = await deps.fetchMessages(deps.mailboxConfig, limit, knownSubjects)
+  const { messages, close } = await deps.fetchMessages(
+    deps.mailboxConfig,
+    limit,
+    knownSubjects
+  )
 
   try {
     const dossierIds: string[] = []
     for (const message of messages) {
       try {
-        const fileId = await deps.uploadFile(message.attachmentBuffer, message.attachmentFilename)
+        const fileId = await deps.uploadFile(
+          message.attachmentBuffer,
+          message.attachmentFilename
+        )
         const dossierId = await deps.dossiers.createOne({
           status: 'pending',
           source_file: fileId,
           source_message_id: message.messageId,
           source_subject: message.subject
-        } as Partial<Dossier>)
+        } as Partial<T>)
 
         // Only after the dossier row exists - a message that failed to ingest
         // stays unmarked and is retried on the next run (see mailbox.ts for why
@@ -57,7 +81,10 @@ export async function ingestDossiersFromMailbox(limit: number, deps: IngestMailb
         await message.markSeen()
         dossierIds.push(dossierId)
       } catch (error) {
-        deps.logger.warn(error, `ingest-mailbox: skipped message ${message.messageId}`)
+        deps.logger.warn(
+          error,
+          `ingest-mailbox: skipped message ${message.messageId}`
+        )
       }
     }
 

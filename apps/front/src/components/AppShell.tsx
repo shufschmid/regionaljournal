@@ -7,11 +7,15 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { DossiersPanel } from './DossiersPanel'
 import { EditionsPanel } from './EditionsPanel'
 import { LoginForm } from './LoginForm'
+import { Punkt6DossiersPanel } from './Punkt6DossiersPanel'
+import { Punkt6EditionsPanel } from './Punkt6EditionsPanel'
 
 interface SessionUser {
   email: string
@@ -20,6 +24,8 @@ interface SessionUser {
 
 type State = { status: 'loading' } | { status: 'anonymous' } | { status: 'signed-in'; user: SessionUser }
 
+type ShowTab = 'regionaljournal' | 'telebasel'
+
 // Decides between the login form and the app.
 //
 // The session check runs in the browser, which also means no Apollo query is ever
@@ -27,6 +33,7 @@ type State = { status: 'loading' } | { status: 'anonymous' } | { status: 'signed
 // starts out in `loading`.
 export function AppShell() {
   const [state, setState] = useState<State>({ status: 'loading' })
+  const [tab, setTab] = useState<ShowTab>('regionaljournal')
 
   const check = useCallback(async () => {
     try {
@@ -79,7 +86,7 @@ export function AppShell() {
       >
         <Toolbar>
           <Typography variant="h1" component="h1" sx={{ flexGrow: 1, fontSize: '1.25rem' }}>
-            Regionaljournal
+            Redaktionstool
           </Typography>
           <Typography
             variant="body2"
@@ -92,13 +99,25 @@ export function AppShell() {
             Abmelden
           </Button>
         </Toolbar>
+        <Tabs value={tab} onChange={(_, value: ShowTab) => setTab(value)} sx={{ px: 2, minHeight: 40 }}>
+          <Tab value="regionaljournal" label="Regionaljournal" sx={{ minHeight: 40 }} />
+          <Tab value="telebasel" label="Telebasel" sx={{ minHeight: 40 }} />
+        </Tabs>
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 3 }}>
-        <Stack spacing={4}>
-          <DossiersPanel />
-          <EditionsPanel />
-        </Stack>
+        {tab === 'regionaljournal' && (
+          <Stack spacing={4}>
+            <DossiersPanel />
+            <EditionsPanel />
+          </Stack>
+        )}
+        {tab === 'telebasel' && (
+          <Stack spacing={4}>
+            <Punkt6DossiersPanel />
+            <Punkt6EditionsPanel />
+          </Stack>
+        )}
       </Container>
     </>
   )

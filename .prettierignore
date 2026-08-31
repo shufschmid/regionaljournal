@@ -1,5 +1,9 @@
 # Vendored / generated — never reformat
 **/node_modules
+# Real telebasel.ch HTML captures, pinned byte-for-byte as regression fixtures for
+# punkt6/telebasel-client.ts's scraping regexes — reformatting would silently
+# diverge them from what the real site actually serves.
+apps/directus/extensions/app/src/punkt6/__fixtures__/*.html
 apps/directus/schema/*
 !apps/directus/schema/README.md
 apps/directus/extensions/.registry

@@ -74,7 +74,73 @@ export interface Edition {
   date_updated: string | null
 }
 
+export type Punkt6DossierStatus =
+  | 'pending'
+  | 'processing'
+  | 'processed'
+  | 'failed'
+
+export interface Punkt6Dossier {
+  id: string
+  status: Punkt6DossierStatus
+  /** FK -> directus_files.id. The uploaded/fetched Punkt6 dossier PDF. */
+  source_file: string
+  /** IMAP Message-ID, when the dossier arrived by mail. Null for a manual upload. */
+  source_message_id: string | null
+  source_subject: string | null
+  /** Set by punkt6-dossiers-process-pending / punkt6-dossier-process when status becomes 'failed'. */
+  error_message: string | null
+  processed_at: string | null
+  date_created: string | null
+  date_updated: string | null
+}
+
+export type Punkt6EditionStatus = 'draft' | 'published' | 'archived'
+
+/**
+ * Written only by process-punkt6-dossier.ts. One entry per Beitrag other than the
+ * Hauptbeitrag (the edition's own `headline`/`lead`) - same role as `ExtraTopic`
+ * for the Regionaljournal `editions` collection, but always fully resolved
+ * (telebasel.ch gives exact segment boundaries, so there is no "unmatched" case
+ * the way an `ExtraTopic`'s Claude-guessed timestamp can be null).
+ */
+export interface Punkt6ExtraTopic {
+  headline: string
+  summary: string | null
+  startSeconds: number
+  endSeconds: number
+}
+
+export interface Punkt6Edition {
+  id: string
+  status: Punkt6EditionStatus
+  /** FK -> punkt6_dossiers.id. One dossier (one episode) produces exactly one edition. */
+  dossier: string
+  broadcast_date: string
+  /** The Hauptbeitrag's title, from telebasel.ch's first Clip. Editable. */
+  headline: string
+  /** The Hauptbeitrag's optional, Claude-written summary. */
+  lead: string | null
+  /** `cast-json` column: the WHOLE episode's transcript, not just the Hauptbeitrag's slice. */
+  transcript: TranscriptParagraph[] | null
+  /** Where the Hauptbeitrag sits within the shared episode video, in seconds. */
+  main_start_seconds: number | null
+  main_end_seconds: number | null
+  /** `cast-json` column: every other Beitrag of this Sendung. */
+  extra_topics: Punkt6ExtraTopic[] | null
+  /** Resolved video of the WHOLE episode (telebasel.ch `contentUrl`/`data-video-url`), shared by every Beitrag. */
+  video_url: string | null
+  /** The telebasel.ch episode page, for an editorial "view original" link. */
+  episode_url: string | null
+  /** Set when no telebasel.ch episode was found for broadcast_date; the edition still gets created, just without video/timing. */
+  resolution_error: string | null
+  date_created: string | null
+  date_updated: string | null
+}
+
 export interface Schema {
   dossiers: Dossier[]
   editions: Edition[]
+  punkt6_dossiers: Punkt6Dossier[]
+  punkt6_editions: Punkt6Edition[]
 }

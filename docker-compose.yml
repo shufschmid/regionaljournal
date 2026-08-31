@@ -4,15 +4,33 @@
 #   cp .env.example .env      # fill in ANTHROPIC_API_KEY, change the secrets
 #   docker compose up --build
 #
-#   frontend       http://localhost:3000
-#   Directus admin http://localhost:8055
+#   frontend       http://localhost:3100
+#   Directus admin http://localhost:8155
+#
+# (Host ports come from docker-compose.override.yml, local-dev only - see there.)
 #
 # State lives in exactly two named volumes below. Nothing else on the host is
 # written to — that is the "no persistent file storage outside Directus" rule.
+#
+# ---------------------------------------------------------------------------------
+# Service names below are prefixed `regionaljournal-`, not generic `directus` /
+# `postgres` / `front`. This is load-bearing, not cosmetic - never rename one back.
+#
+# Compose gives every service a network alias equal to its own name, and a PaaS that
+# hosts several stacks (Dokploy, Coolify, Caprover) puts every stack that owns a
+# domain on ONE shared Docker network. Two stacks that both call a service
+# `directus` therefore publish the same alias: `http://directus:8055` resolves to
+# both containers and Docker's DNS round-robins between them. Half your requests
+# reach a different application's Directus — which answers them with a valid-looking
+# 400 (its database has none of your collections) or a 403 (it signs tokens with a
+# different SECRET), while the other half work. Nothing in the logs says "wrong
+# host". On Dokploy specifically, a domain is bound to a service by name - the
+# Service Name on each domain must say `regionaljournal-front` / `regionaljournal-directus`.
+# ---------------------------------------------------------------------------------
 name: regionaljournal
 
 services:
-  postgres:
+  regionaljournal-postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: ${DB_DATABASE:-directus}
@@ -27,11 +45,11 @@ services:
       retries: 20
     restart: unless-stopped
 
-  directus:
+  regionaljournal-directus:
     build:
       context: ./apps/directus
     depends_on:
-      postgres:
+      regionaljournal-postgres:
         condition: service_healthy
     environment:
       # The entrypoint uses these to create the first admin on an empty database.
@@ -42,14 +60,14 @@ services:
       SECRET: ${SECRET:?set SECRET in .env — openssl rand -hex 32}
 
       DB_CLIENT: pg
-      DB_HOST: postgres
+      DB_HOST: regionaljournal-postgres
       DB_PORT: '5432'
       DB_DATABASE: ${DB_DATABASE:-directus}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD}
 
       PORT: '8055'
-      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://localhost:8055}
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://localhost:8155}
       TZ: ${TZ:-Europe/Zurich}
 
       # The only language model in this stack. Optional at boot: the app starts
@@ -73,6 +91,10 @@ services:
       IMAP_MAILBOX: ${IMAP_MAILBOX:-INBOX}
       IMAP_SUBJECT_FILTER: ${IMAP_SUBJECT_FILTER:-}
 
+      # Punkt6 (Tele Basel) dossier mail - same mailbox above, a second, independent
+      # subject filter. See extensions/app/src/punkt6/ingest-mailbox.ts.
+      PUNKT6_IMAP_SUBJECT_FILTER: ${PUNKT6_IMAP_SUBJECT_FILTER:-}
+
       EXTENSIONS_PATH: ./extensions
       # Auto-reload watches the filesystem; pointless in an immutable image.
       EXTENSIONS_AUTO_RELOAD: 'false'
@@ -84,10 +106,10 @@ services:
       STORAGE_LOCAL_ROOT: ./uploads
 
       CORS_ENABLED: 'true'
-      CORS_ORIGIN: ${FRONT_PUBLIC_URL:-http://localhost:3000}
+      CORS_ORIGIN: ${FRONT_PUBLIC_URL:-http://localhost:3100}
 
-      PASSWORD_RESET_URL_ALLOW_LIST: ${FRONT_PUBLIC_URL:-http://localhost:3000}/auth/set-new-password
-      USER_INVITE_URL_ALLOW_LIST: ${FRONT_PUBLIC_URL:-http://localhost:3000}/auth/accept-invite
+      PASSWORD_RESET_URL_ALLOW_LIST: ${FRONT_PUBLIC_URL:-http://localhost:3100}/auth/set-new-password
+      USER_INVITE_URL_ALLOW_LIST: ${FRONT_PUBLIC_URL:-http://localhost:3100}/auth/accept-invite
 
       # Set to false to skip `directus-sync push` on boot (e.g. to inspect a
       # production database without applying the committed schema).
@@ -95,8 +117,6 @@ services:
     volumes:
       # Directus Files. The only binary storage this application has.
       - directus_uploads:/cms/uploads
-    ports:
-      - '${DIRECTUS_PORT:-8055}:8055'
     healthcheck:
       test:
         [
@@ -112,19 +132,17 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  front:
+  regionaljournal-front:
     build:
       context: ./apps/front
     depends_on:
-      directus:
+      regionaljournal-directus:
         condition: service_healthy
     environment:
       # Inside the compose network, not localhost. The browser never uses this URL —
       # it only talks to this app's own /api routes.
-      DIRECTUS_URL: http://directus:8055
+      DIRECTUS_URL: http://regionaljournal-directus:8055
       NODE_ENV: production
-    ports:
-      - '${FRONT_PORT:-3000}:3000'
     healthcheck:
       test:
         [

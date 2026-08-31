@@ -50,6 +50,37 @@
           "app": "src/operations/dossiers-ingest-imap/app.ts",
           "api": "src/operations/dossiers-ingest-imap/api.ts"
         }
+      },
+      {
+        "type": "endpoint",
+        "name": "punkt6-dossier-process",
+        "source": "src/endpoints/punkt6-dossier-process/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "punkt6-dossiers-ingest",
+        "source": "src/endpoints/punkt6-dossiers-ingest/index.ts"
+      },
+      {
+        "type": "hook",
+        "name": "punkt6-editions-guard-publish",
+        "source": "src/hooks/punkt6-editions-guard-publish/index.ts"
+      },
+      {
+        "type": "operation",
+        "name": "punkt6-dossiers-process-pending",
+        "source": {
+          "app": "src/operations/punkt6-dossiers-process-pending/app.ts",
+          "api": "src/operations/punkt6-dossiers-process-pending/api.ts"
+        }
+      },
+      {
+        "type": "operation",
+        "name": "punkt6-dossiers-ingest-imap",
+        "source": {
+          "app": "src/operations/punkt6-dossiers-ingest-imap/app.ts",
+          "api": "src/operations/punkt6-dossiers-ingest-imap/api.ts"
+        }
       }
     ],
     "host": "^11.0.0"

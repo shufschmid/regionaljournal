@@ -54,7 +54,10 @@ them is wrong even if it works.
    a second SDK, or a direct `fetch` to an inference endpoint.
 3. **Runs with Docker.** `cp .env.example .env && docker compose up --build` starts
    the entire application. Anything a feature needs at runtime is a service or an
-   environment variable in [docker-compose.yml](docker-compose.yml).
+   environment variable in [docker-compose.yml](docker-compose.yml). Service names
+   there are prefixed `regionaljournal-`, never a bare `directus`/`postgres`/`front`
+   — see the comment at the top of that file for why a shared-host PaaS makes this
+   load-bearing, not cosmetic.
 4. **Self-contained.** Postgres, Directus and the frontend are the only services. No
    Redis, no queue broker, no external cron host, no side-car. The Claude API is the
    single outbound dependency; a new one needs a deliberate decision, not a commit.
@@ -206,6 +209,76 @@ it never calls `process-dossier` itself — chaining several 15-35s processing c
 into one HTTP request risks a reverse-proxy timeout on a real deployment, so
 processing stays the separate, already-existing per-dossier step.
 
+## Domain: Punkt6 (Tele Basel)
+
+A second, parallel pipeline for "Punkt6", Tele Basel's daily TV news show — same
+SMD dossier-PDF email channel as Regionaljournal (same mailbox, same footer/layout
+system, different subject filter and different show-specific header), but resolved
+against telebasel.ch instead of the SRGSSR Audio Metadata API, and mirrored end to
+end rather than merged into the `dossiers`/`editions` collections: own collections
+(`punkt6_dossiers`/`punkt6_editions`, same `pending → processing → processed/failed`
+
+- `draft/published/archived` state machine), own domain folder
+  (`apps/directus/extensions/app/src/punkt6/`), own endpoints/operations/hook, own
+  frontend panels. Chosen over extending `dossiers`/`editions` so the two very
+  different content shapes (an audio _story_ vs. a slice of one shared TV _episode_
+  video) don't have to fit one schema, and so this stays additive to the
+  already-working Regionaljournal pipeline rather than risking it.
+
+One PDF is always **one continuous episode transcript** (unlike a Regionaljournal
+dossier, which can bundle several separate, independently-timestamped segments) —
+`punkt6/pdf-parser.ts`'s `parsePunkt6Dossier` reflects that: it returns one
+`Punkt6Segment`, not an array. It reuses the generic PDF line/paragraph extraction
+now factored out into `shared/pdf-text.ts` (column split, hyphen-aware joining,
+`HH:MM:SS` reflow — shared with `dossiers/pdf-parser.ts`, since both PDFs come from
+the same SMD system), adding its own header markers (`© teleBasel DD-MM-YYYY`,
+`punkt6 vom DD.MM.YYYY`) and a defensive, rarely-needed `splitStuckWords` pass
+(only fires on a lowercase-to-uppercase run, e.g. would fix `InhaberinGerdaMaise`)
+kept from an early concern about pdfjs-dist losing spaces on this PDF format —
+verified against the real sample PDF (`punkt6/__fixtures__/TEBV_2026-08-25.pdf`)
+that pdfjs-dist actually extracts this show's PDFs correctly-spaced throughout;
+that garbling only ever showed up in a different, non-pdfjs-dist text rendering
+of the same file. Also verified against that real PDF: unlike a Regionaljournal
+dossier's longer paragraphs, this show's own SMD transcription timestamps nearly
+every line individually (one `Paragraph` per line, not per spoken sentence) —
+`process-punkt6-dossier.ts` takes its PDF parser as an overridable dependency
+(`ProcessPunkt6DossierDeps.parseDossier`) so `process-punkt6-dossier.test.ts` can
+mix fast synthetic fixtures with one real-PDF-plus-real-telebasel.ch-HTML
+end-to-end test.
+
+Unlike SRGSSR, there is **no OAuth client and no per-story episode API** to resolve
+against: `punkt6/telebasel-client.ts`'s `createTelebaselClient` does two plain,
+unauthenticated `GET`s against telebasel.ch's own public pages (confirmed against
+the real site — `robots.txt` allows `/sendungen/`, no login or JS execution
+needed) — the show archive (`/sendungen/punkt6`) to map a broadcast date to an
+episode id, then that episode's page for its resolved video URL (schema.org
+`VideoObject` `contentUrl` meta) and, crucially, one schema.org `Clip` block per
+Beitrag with an exact `name`/`startOffset`/`endOffset` (seconds) — **pre-computed,
+authoritative segment boundaries**, confirmed to line up exactly with the PDF's own
+timestamps. `punkt6/telebasel-client.test.ts` pins the scraping regexes against
+real, saved telebasel.ch HTML (`punkt6/__fixtures__/*.html` — kept out of Prettier
+via `.prettierignore`, since reformatting would silently diverge them from what the
+site actually serves).
+
+This is why Punkt6 has **no Claude-based timestamp-matching step** the way
+Regionaljournal's `topics-prompt.ts` needs one: `punkt6/segment-slicer.ts` slices
+the transcript by telebasel.ch's own boundaries, a pure lookup. Claude's only role
+here is optional — `punkt6/summary-prompt.ts` asks for a short editorial lead per
+Beitrag from its transcript slice, same "pure prompt-building + validated,
+degrade-to-null answer" shape as `topics-prompt.ts`, and a failure there never
+blocks the pipeline. If telebasel.ch resolution itself fails for a broadcast date
+(`TelebaselLookupError`), `process-punkt6-dossier.ts` doesn't drop the dossier's
+content — it creates a single whole-episode edition (unsliced transcript, no
+video) rather than none, the same "never silently lose data" posture as SRGSSR
+per-segment failures.
+
+`ingestDossiersFromMailbox` (`dossiers/ingest-mailbox.ts`) was made generic over
+the target row type specifically for this reuse — `punkt6/ingest-mailbox.ts` calls
+it unchanged with a second `MailboxConfig` built from `PUNKT6_IMAP_SUBJECT_FILTER`
+(same `IMAP_HOST`/`PORT`/`USER`/`PASSWORD`/`MAILBOX` as Regionaljournal — same
+mailbox, per the editor). Dedup runs against `punkt6_dossiers.source_subject`
+independently of the Regionaljournal dossiers' own dedup set.
+
 ## Deployment
 
 Images are published to GHCR, named after the repository:
@@ -224,6 +297,15 @@ apps' pipelines live in `.github/workflows/`.
 On a server, deploy the same `docker-compose.yml` with real values in `.env`
 (`KEY`, `SECRET`, `DB_PASSWORD`, `ADMIN_PASSWORD`, the public URLs) and a reverse
 proxy in front for TLS.
+
+Deploying via a shared-host PaaS (Dokploy, Coolify, Caprover): `docker-compose.yml`
+carries no `ports:` — those live in `docker-compose.override.yml`, which such tools
+read only for local dev and otherwise ignore, so routing goes entirely through the
+PaaS's own reverse proxy binding a domain to a service by name and internal port
+(8055 for `regionaljournal-directus`, 3000 for `regionaljournal-front`). On Dokploy
+specifically, the Service Name configured on each domain must say exactly that — a
+domain still pointed at the old bare `directus`/`front` stops routing the moment the
+services are renamed.
 
 ## Things to know before editing
 

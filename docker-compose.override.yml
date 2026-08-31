@@ -1,0 +1,10 @@
+# Local dev only. Dokploy reads only docker-compose.yml, so it ignores this file -
+# on a real deployment, host ports are irrelevant; Dokploy/Traefik routes to a
+# service by name and internal port instead.
+services:
+  regionaljournal-directus:
+    ports:
+      - '${DIRECTUS_PORT:-8155}:8055'
+  regionaljournal-front:
+    ports:
+      - '${FRONT_PORT:-3100}:3000'
